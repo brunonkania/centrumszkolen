@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Panel kursów – Centrum szkoleniowe</title>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="./index.html">
+      <div class="logo"></div>
+      <span class="brand-title">Centrum szkoleniowe</span>
+    </a>
+    <div class="actions">
+      <a class="btn btn-outline" href="./panel.html">Moje kursy</a>
+      <button class="btn" id="logoutBtn">Wyloguj</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <h1 class="h1">Twoje kursy</h1>
+    <p class="p">Kup dostęp i realizuj moduły. Zmiany zapisują się w backendzie.</p>
+  </header>
+
+  <div class="container">
+    <div id="courses" class="grid"></div>
+
+    <div id="courseView" class="card hidden" style="margin-top:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <h3 id="courseTitle">Moduły kursu</h3>
+        <button class="btn btn-outline" id="closeCourse">Wróć do listy</button>
+      </div>
+      <ul id="modules" class="list"></ul>
+    </div>
+  </div>
+
+  <div class="footer">© 2025 Centrum szkoleniowe</div>
+
+  <script src="./shared.js"></script>
+  <script>
+    protectRoute(); // przekieruje do logowania, jeśli brak tokena
+    const coursesEl = document.getElementById('courses');
+    const courseView = document.getElementById('courseView');
+    const courseTitle = document.getElementById('courseTitle');
+    const modulesEl = document.getElementById('modules');
+    let currentCourseId = null;
+
+    document.getElementById('logoutBtn').addEventListener('click', ()=> { logout(); location.href='./logowanie.html'; });
+    document.getElementById('closeCourse').addEventListener('click', ()=> {
+      courseView.classList.add('hidden');
+      coursesEl.classList.remove('hidden');
+      currentCourseId = null;
+    });
+
+    async function loadCourses(){
+      coursesEl.innerHTML = '';
+      const res = await authFetch('/api/courses');
+      const courses = await res.json();
+
+      for(const c of courses){
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${c.title}</h3>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+            <span class="badge ${c.has_access ? 'ok' : 'no'}">${c.has_access ? 'Dostęp aktywny' : 'Brak dostępu'}</span>
+            <div>
+              ${c.has_access
+                ? `<button class="btn" data-open="${c.id}">Wejdź</button>`
+                : `<button class="btn btn-gradient" data-buy="${c.id}">Kup</button>`}
+            </div>
+          </div>
+        `;
+        coursesEl.appendChild(card);
+      }
+
+      // click handlers
+      coursesEl.querySelectorAll('[data-buy]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-buy');
+          btn.disabled = true;
+          try {
+            const res = await authFetch('/api/purchase', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ courseId: id })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error || 'Zakup nieudany');
+            await loadCourses();
+          } catch(err){
+            alert(err.message);
+          } finally { btn.disabled = false; }
+        });
+      });
+
+      coursesEl.querySelectorAll('[data-open]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-open');
+          await openCourse(id);
+        });
+      });
+    }
+
+    async function openCourse(courseId){
+      currentCourseId = courseId;
+      // Fetch modules
+      const res = await authFetch('/api/progress/' + courseId);
+      const modules = await res.json();
+      coursesEl.classList.add('hidden');
+      courseView.classList.remove('hidden');
+      courseTitle.textContent = 'Moduły kursu';
+      modulesEl.innerHTML = '';
+
+      for(const m of modules){
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span>${m.position}. ${m.title}</span>
+          <span>
+            ${m.completed ? '<span class="badge ok">Zaliczone</span>' : ''}
+            ${m.completed ? '' : '<button class="btn btn-outline" data-done="'+m.module_id+'">Zalicz</button>'}
+          </span>
+        `;
+        modulesEl.appendChild(li);
+      }
+
+      modulesEl.querySelectorAll('[data-done]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const moduleId = btn.getAttribute('data-done');
+          btn.disabled = true;
+          try {
+            const res = await authFetch('/api/progress', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ moduleId })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error || 'Operacja nieudana');
+            await openCourse(currentCourseId);
+          } catch(err){ alert(err.message); }
+          finally { btn.disabled = false; }
+        });
+      });
+    }
+
+    loadCourses();
+  </script>
+</body>
+</html>

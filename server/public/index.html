@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Centrum szkoleniowe – Strona główna</title>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="./index.html">
+      <div class="logo"></div>
+      <span class="brand-title">Centrum szkoleniowe</span>
+    </a>
+    <div class="actions">
+      <a class="btn btn-outline" href="./logowanie.html" id="loginBtn">Zaloguj</a>
+      <a class="btn btn-gradient" href="./panel.html" id="panelBtn">Moje kursy</a>
+      <button class="btn hidden" id="logoutBtn">Wyloguj</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <h1 class="h1">Witaj w Twoim panelu kursów</h1>
+    <p class="p">Zaloguj się, kup dostęp do kursu i śledź swój postęp. Wszystko w spójnej estetyce granatowo‑różowo‑niebieskiej.</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h3>Jak zacząć?</h3>
+      <ol>
+        <li>Przejdź do <a class="link" href="./logowanie.html">logowania</a> i utwórz konto.</li>
+        <li>Wejdź do <a class="link" href="./panel.html">panelu</a>, aby zobaczyć kursy.</li>
+        <li>Kliknij <strong>Kup</strong>, żeby dodać dostęp, a potem realizuj moduły.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="footer">© 2025 Centrum szkoleniowe</div>
+
+  <script src="./shared.js"></script>
+  <script>
+    // toggle przycisków wg tokenu
+    const hasToken = !!getToken();
+    document.getElementById('logoutBtn').classList.toggle('hidden', !hasToken);
+    document.getElementById('panelBtn').classList.toggle('hidden', !hasToken);
+    document.getElementById('loginBtn').classList.toggle('hidden', hasToken);
+    document.getElementById('logoutBtn').addEventListener('click', () => { logout(); location.reload(); });
+  </script>
+</body>
+</html>

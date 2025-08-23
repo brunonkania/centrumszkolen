@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Logowanie – Centrum szkoleniowe</title>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="./index.html">
+      <div class="logo"></div>
+      <span class="brand-title">Centrum szkoleniowe</span>
+    </a>
+    <div class="actions">
+      <a class="btn btn-outline" href="./panel.html">Moje kursy</a>
+      <button class="btn" id="logoutBtn">Wyloguj</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <h1 class="h1">Zaloguj się lub załóż konto</h1>
+    <p class="p">Po zalogowaniu zobaczysz swoje kursy i postęp.</p>
+  </header>
+
+  <div class="container">
+    <div class="form" id="authForm">
+      <div id="msg" class="hidden"></div>
+      <label>Email</label>
+      <input class="input" id="email" type="email" placeholder="you@example.com"/>
+      <label>Hasło</label>
+      <input class="input" id="password" type="password" placeholder="••••••••"/>
+      <div style="display:flex; gap:10px; margin-top:4px">
+        <button class="btn btn-gradient" id="loginBtn">Zaloguj</button>
+        <button class="btn btn-outline" id="registerBtn">Załóż konto</button>
+      </div>
+      <div class="help">Masz już konto? Zaloguj się. Nowy? Załóż konto.</div>
+    </div>
+  </div>
+
+  <div class="footer">© 2025 Centrum szkoleniowe</div>
+
+  <script src="./shared.js"></script>
+  <script>
+    const msg = document.getElementById('msg');
+    function show(kind, text){
+      msg.className = kind === 'ok' ? 'alert success' : 'alert';
+      msg.textContent = text; msg.classList.remove('hidden');
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', () => { logout(); location.href='./index.html'; });
+
+    document.getElementById('loginBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const body = { email: email.value.trim(), password: password.value };
+        const res = await fetch(API_URL + '/api/auth/login', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if(!res.ok){ throw new Error(data.error || 'Błąd logowania'); }
+        setToken(data.token);
+        show('ok', 'Zalogowano. Przekierowanie...');
+        setTimeout(()=> location.href='./panel.html', 600);
+      } catch(err){ show('err', err.message); }
+    });
+
+    document.getElementById('registerBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const body = { email: email.value.trim(), password: password.value };
+        const res = await fetch(API_URL + '/api/auth/register', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if(!res.ok){ throw new Error(data.error || 'Rejestracja nieudana'); }
+        setToken(data.token);
+        show('ok', 'Konto utworzone. Przekierowanie...');
+        setTimeout(()=> location.href='./panel.html', 600);
+      } catch(err){ show('err', err.message); }
+    });
+  </script>
+</body>
+</html>

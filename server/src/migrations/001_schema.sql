@@ -1,0 +1,2 @@
+-- src/migrations/001_schema.sql
+-- opcjonalne ustawienia lub rozszerzenia dodasz tu później
