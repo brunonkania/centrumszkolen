@@ -1,10 +1,26 @@
 import pg from 'pg';
-import { config } from './config.js';
+const { Pool } = pg;
 
-export const pool = new pg.Pool({ connectionString: config.db.url });
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
 
-export async function query(q, params = []) {
+export async function query(text, params) {
+  const res = await pool.query(text, params);
+  return res;
+}
+
+export async function tx(run) {
   const client = await pool.connect();
-  try { return await client.query(q, params); }
-  finally { client.release(); }
+  try {
+    await client.query('BEGIN');
+    const res = await run(client);
+    await client.query('COMMIT');
+    return res;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }

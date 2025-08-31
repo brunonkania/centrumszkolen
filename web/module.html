@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moduł – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="actions">
+      <a class="btn ghost" id="backToCourse" href="#">Powrót do kursu</a>
+      <a class="btn ghost" href="./panel.html">Panel</a>
+      <button id="logoutBtn" class="btn">Wyloguj</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1 id="courseTitle">Kurs</h1>
+      <p class="muted" id="progressText">Postęp: 0%</p>
+    </section>
+
+    <section class="content">
+      <h2 id="moduleTitle">Moduł</h2>
+      <div id="videoContainer" class="video" style="display:none;"></div>
+      <div id="moduleBody"></div>
+
+      <div class="navbar">
+        <button id="prevBtn" class="btn">← Poprzedni</button>
+        <div style="display:flex;gap:8px;">
+          <button id="completeBtn" class="btn">Zalicz moduł</button>
+          <a id="quizBtn" class="btn ghost" href="#" style="display:none;">Rozwiąż quiz</a>
+          <a id="courseBtn" class="btn ghost" href="#">Lista modułów</a>
+        </div>
+        <button id="nextBtn" class="btn">Następny →</button>
+      </div>
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+
+  <script type="module" src="./js/module.js"></script>
+  <script defer src="./app.js"></script>
+</body>
+</html>

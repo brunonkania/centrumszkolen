@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kurs – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="actions">
+      <a class="btn ghost" href="./panel.html">Panel</a>
+      <a class="btn ghost" href="./sklep.html">Sklep</a>
+      <button id="logoutBtn" class="btn">Wyloguj</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1 id="courseTitle">Kurs</h1>
+      <div class="progress">
+        <div class="progress__bar" id="progressBar" style="width:0%"></div>
+      </div>
+      <p class="muted" id="progressText">Postęp: 0%</p>
+      <p><a id="certBtn" class="btn ghost" href="#" style="display:none;">Pobierz certyfikat</a></p>
+    </section>
+
+    <section id="modules" class="grid"></section>
+    <p id="msg" class="muted"></p>
+  </main>
+
+  <script type="module" src="./js/course.js"></script>
+  <script defer src="./app.js"></script>
+</body>
+</html>

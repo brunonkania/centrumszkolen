@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sklep – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="actions">
+      <a class="btn ghost" href="./panel.html">Panel</a>
+      <button id="logoutBtn" class="btn">Wyloguj</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Sklep</h1>
+      <p class="muted">Ten etap nie zawiera prawdziwych płatności.</p>
+      <div class="grid" id="catalog">
+        <div class="card skeleton" style="height:96px;"></div>
+        <div class="card skeleton" style="height:96px;"></div>
+      </div>
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+
+  <script type="module" src="./js/shop.js"></script>
+  <script defer src="./app.js"></script>
+</body>
+</html>

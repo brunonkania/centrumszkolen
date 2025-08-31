@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reset hasła</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="card" style="max-width:520px;margin:40px auto;">
+      <h2>Reset hasła</h2>
+      <form id="request" class="form">
+        <label>Email <input id="email" type="email" required></label>
+        <button class="btn" type="submit">Wyślij link (DEV)</button>
+      </form>
+
+      <hr class="divider" />
+
+      <form id="change" class="form">
+        <label>Token <input id="token" required></label>
+        <label>Nowe hasło <input id="password" type="password" required></label>
+        <button class="btn" type="submit">Ustaw hasło</button>
+      </form>
+
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+  <script type="module">
+    import { api } from './js/api.js';
+    const msg = document.getElementById('msg');
+    document.getElementById('request').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      msg.textContent = 'Wysyłanie...';
+      try {
+        const email = document.getElementById('email').value.trim();
+        const res = await api('/auth/password/forgot', { method:'POST', body:{ email } });
+        msg.innerHTML = 'Link (DEV): <code>' + (res.reset_link || '') + '</code>';
+      } catch (e) {
+        msg.textContent = e.message || 'Błąd';
+      }
+    });
+    document.getElementById('change').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      msg.textContent = 'Zmiana...';
+      try {
+        const token = document.getElementById('token').value.trim();
+        const password = document.getElementById('password').value;
+        await api('/auth/password/reset', { method:'POST', body:{ token, password } });
+        msg.textContent = 'Hasło zmienione ✅';
+      } catch (e) {
+        msg.textContent = e.message || 'Błąd';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weryfikacja e-maila</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="card" style="max-width:520px;margin:40px auto;">
+      <h2>Weryfikacja e-maila</h2>
+      <p class="muted">Jeśli masz token w linku, po prostu wklej go poniżej.</p>
+      <form id="form" class="form">
+        <label>Token <input id="token" required></label>
+        <button class="btn" type="submit">Potwierdź</button>
+      </form>
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+  <script type="module">
+    import { api } from './js/api.js';
+    const sp = new URLSearchParams(location.search);
+    const tokenField = document.getElementById('token');
+    const token = sp.get('token');
+    if (token) tokenField.value = token;
+    document.getElementById('form').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const t = tokenField.value.trim();
+      try {
+        await api('/auth/verify', { method:'POST', body: { token: t } });
+        document.getElementById('msg').textContent = 'Zweryfikowano ✅';
+      } catch (e) {
+        document.getElementById('msg').textContent = e.message || 'Błąd';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Konto – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="actions">
+      <a class="btn ghost" href="./panel.html">Panel</a>
+      <button id="logoutBtn" class="btn">Wyloguj</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Moje konto</h1>
+      <p class="muted">Eksport danych i usunięcie konta (RODO).</p>
+      <div class="grid">
+        <button id="exportBtn" class="btn">Eksport danych (JSON)</button>
+        <button id="deleteBtn" class="btn">Usuń konto</button>
+      </div>
+      <pre id="out" class="content" style="white-space:pre-wrap;"></pre>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api } from './js/api.js';
+    import { requireAuthOrRedirect, logout } from './js/auth.js';
+    await requireAuthOrRedirect();
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await api('/auth/logout', { method:'POST' });
+      logout();
+      location.replace('./index.html');
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', async ()=>{
+      try {
+        const data = await api('/account/export');
+        document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+      } catch (e) { alert(e.message || 'Błąd'); }
+    });
+
+    document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+      if (!confirm('Na pewno? Tego nie da się cofnąć.')) return;
+      try {
+        await api('/account/delete', { method:'DELETE' });
+        alert('Konto usunięte.');
+        location.replace('./index.html');
+      } catch (e) { alert(e.message || 'Błąd'); }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logowanie – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+  </header>
+
+  <main class="container">
+    <section class="card" style="max-width:520px;margin:40px auto;">
+      <h2>Zaloguj się</h2>
+      <form id="loginForm" class="form">
+        <label>Email <input type="email" id="email" required></label>
+        <label>Hasło <input type="password" id="password" required></label>
+        <button class="btn" type="submit">Zaloguj</button>
+      </form>
+
+      <hr class="divider" />
+      <h3>Nie masz konta?</h3>
+      <form id="regForm" class="form">
+        <label>Imię <input type="text" id="r_name" required></label>
+        <label>Email <input type="email" id="r_email" required></label>
+        <label>Hasło <input type="password" id="r_password" required></label>
+        <button class="btn ghost" type="submit">Zarejestruj</button>
+      </form>
+
+      <p>
+        <a href="./verify.html">Weryfikacja e-maila</a> •
+        <a href="./reset.html">Reset hasła</a>
+      </p>
+
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { login, register } from './js/auth.js';
+    import { showToast } from './app.js';
+
+    const msg = document.getElementById('msg');
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = 'Logowanie...';
+      try {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const user = await login(email, password);
+        showToast('Zalogowano');
+        location.replace('./panel.html');
+      } catch (err) {
+        msg.textContent = err.message || 'Błąd logowania';
+      }
+    });
+
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = 'Rejestracja...';
+      try {
+        const name = document.getElementById('r_name').value.trim();
+        const email = document.getElementById('r_email').value.trim();
+        const password = document.getElementById('r_password').value;
+        const res = await register(name, email, password);
+        msg.innerHTML = 'Rejestracja OK. Link weryfikacyjny (DEV):<br><code>'+ (res.verify_link || '') +'</code>';
+      } catch (err) {
+        msg.textContent = err.message || 'Błąd rejestracji';
+      }
+    });
+  </script>
+</body>
+</html>

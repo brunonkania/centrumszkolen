@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Płatność (DEV) – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="card" style="max-width:520px;margin:40px auto;">
+      <h2>Płatność testowa (DEV)</h2>
+      <p class="muted">To jest symulacja operatora płatności. Kliknij „Opłać” by zakończyć.</p>
+      <div class="row">
+        <button id="pay" class="btn">Opłać ✅</button>
+        <button id="cancel" class="btn">Anuluj ❌</button>
+      </div>
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+  <script type="module">
+    import { api } from './js/api.js';
+    import { requireAuthOrRedirect } from './js/auth.js';
+    requireAuthOrRedirect();
+
+    const sp = new URLSearchParams(location.search);
+    const orderId = Number(sp.get('order') || 0);
+    const msg = document.getElementById('msg');
+
+    document.getElementById('pay').addEventListener('click', async ()=>{
+      msg.textContent = 'Finalizowanie...';
+      try {
+        await api('/checkout/simulate-pay', { method:'POST', body:{ orderId, success:true }, auth:true });
+        location.replace('./sklep.html?paid=1');
+      } catch(e) { msg.textContent = e.message || 'Błąd'; }
+    });
+
+    document.getElementById('cancel').addEventListener('click', async ()=>{
+      msg.textContent = 'Anulowanie...';
+      try {
+        await api('/checkout/simulate-pay', { method:'POST', body:{ orderId, success:false }, auth:true });
+        location.replace('./sklep.html?cancel=1');
+      } catch(e) { msg.textContent = e.message || 'Błąd'; }
+    });
+  </script>
+</body>
+</html>

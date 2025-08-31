@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weryfikacja certyfikatu</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>Weryfikacja certyfikatu</h1>
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+  <script type="module">
+    const sp = new URLSearchParams(location.search);
+    const serial = sp.get('serial');
+    const API = 'http://localhost:3001';
+    const msg = document.getElementById('msg');
+    (async ()=>{
+      try {
+        const res = await fetch(API + '/certificates/verify/' + encodeURIComponent(serial));
+        const data = await res.json();
+        if (data.valid) {
+          msg.innerHTML = 'Certyfikat ważny ✅<br>Serial: <b>'+data.serial+'</b><br>Kurs: '+data.course+'<br>Wystawiono: '+ new Date(data.issued_at).toLocaleString('pl-PL');
+        } else {
+          msg.textContent = 'Nie znaleziono certyfikatu.';
+        }
+      } catch(e) { msg.textContent = 'Błąd weryfikacji.'; }
+    })();
+  </script>
+</body>
+</html>

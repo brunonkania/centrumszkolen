@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="actions">
+      <a class="btn ghost" href="./sklep.html">Sklep</a>
+      <a class="btn ghost" href="./konto.html">Konto</a>
+      <button id="logoutBtn" class="btn">Wyloguj</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Moje kursy</h1>
+      <p class="muted" id="hello">Wczytywanie...</p>
+      <div class="grid" id="courses">
+        <div class="card skeleton" style="height:96px;"></div>
+        <div class="card skeleton" style="height:96px;"></div>
+        <div class="card skeleton" style="height:96px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { requireAuthOrRedirect, currentUser, logout } from './js/auth.js';
+    import { api } from './js/api.js';
+
+    await requireAuthOrRedirect();
+
+    const hello = document.getElementById('hello');
+    const courses = document.getElementById('courses');
+
+    const me = currentUser();
+    hello.textContent = me ? `Cześć, ${me.name || me.email}!` : 'Cześć!';
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await api('/auth/logout', { method:'POST' });
+      logout();
+      location.replace('./index.html');
+    });
+
+    async function loadCourses() {
+      try {
+        const list = await api('/courses');
+        courses.innerHTML = list.map(c => `
+          <a class="card" href="./kurs.html?id=${c.id}">
+            <h3>${c.title}</h3>
+            <div class="mini">
+              <div class="progress"><div class="progress__bar" style="width:${c.progress || 0}%"></div></div>
+              <p class="muted">${c.progress || 0}%</p>
+            </div>
+          </a>
+        `).join('');
+      } catch (e) {
+        courses.innerHTML = `<div class="card">Nie udało się wczytać kursów.</div>`;
+      }
+    }
+    loadCourses();
+  </script>
+</body>
+</html>

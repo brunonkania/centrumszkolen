@@ -1,44 +1,85 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import * as Sentry from '@sentry/node';
+import { Registry, collectDefaultMetrics, Counter } from 'prom-client';
+
+import { attachSecurity, csrfProtection } from './middleware/security.js';
+import { requireAuth } from './middleware/auth.js';
 
 import authRouter from './routes/auth.js';
+import catalogRouter from './routes/catalog.js';
 import coursesRouter from './routes/courses.js';
+import modulesRouter from './routes/modules.js';
+import quizRouter from './routes/quiz.js';
 import progressRouter from './routes/progress.js';
-import purchaseRouter from './routes/purchase.js';
-import myCoursesRouter from './routes/my-courses.js';
+import certificatesRouter from './routes/certificates.js';
+import adminRouter from './routes/admin.js';
+import accountRouter from './routes/account.js';
+import { pool } from './db.js';
 
 const app = express();
 
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN });
+  app.use(Sentry.Handlers.requestHandler());
+}
 
-// 🔹 Serwuj pliki frontendowe z folderu "public"
-app.use(express.static('public'));
+app.use(morgan('tiny'));
+app.use(express.json({ limit: '2mb' }));
+app.use(cookieParser());
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+attachSecurity(app);
 
-// testowe endpointy
-app.get('/', (_, res) => res.send('API is up ✅'));
-app.get('/health', (_, res) => res.json({ ok: true }));
-
-// 🔹 API routes
-app.use('/api/auth', authRouter);
-app.use('/api/courses', coursesRouter);
-app.use('/api/progress', progressRouter);
-app.use('/api/purchase', purchaseRouter);
-app.use('/api/my-courses', myCoursesRouter);
-
-// 🔹 Obsługa błędów
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+// Metrics
+const registry = new Registry();
+collectDefaultMetrics({ register: registry });
+const httpCounter = new Counter({ name: 'http_requests_total', help: 'Total HTTP requests', labelNames: ['method','route','status'] , registers:[registry]});
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    httpCounter.labels(req.method, req.path, String(res.statusCode)).inc();
+  });
+  next();
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Server listening on http://localhost:${PORT}`)
-);
+app.get('/healthz', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, db: 'up' });
+  } catch (e) {
+    res.status(500).json({ ok: false, db: 'down' });
+  }
+});
+app.get('/metrics', async (_req, res) => {
+  res.setHeader('Content-Type', registry.contentType);
+  res.end(await registry.metrics());
+});
+
+// Public
+app.get('/health', (_req, res) => res.json({ ok: true }));
+app.use('/auth', authRouter);
+app.use('/catalog', catalogRouter);
+
+// CSRF for unsafe methods (after public routes)
+app.use(csrfProtection);
+
+// Protected
+app.use('/courses', requireAuth, coursesRouter);
+app.use('/modules', requireAuth, modulesRouter);
+app.use('/quiz', requireAuth, quizRouter);
+app.use('/progress', requireAuth, progressRouter);
+app.use('/certificates', requireAuth, certificatesRouter);
+app.use('/admin', requireAuth, adminRouter);
+app.use('/account', requireAuth, accountRouter);
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (process.env.SENTRY_DSN) Sentry.captureException(err);
+  res.status(500).json({ error: 'Internal error' });
+});
+
+const port = process.env.PORT || 3001;
+app.listen(port, () => console.log(`API listening on :${port}`));

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>Admin (CMS v2)</h1>
+      <p class="muted">Zaloguj się na konto admina: <code>admin@local</code> / <code>admin123</code></p>
+    </section>
+
+    <section class="content">
+      <div class="row">
+        <label>Kurs ID <input id="courseId" type="number" value="1"></label>
+        <button id="load" class="btn">Wczytaj moduły</button>
+      </div>
+      <div id="mods"></div>
+      <hr class="divider"/>
+      <form id="editor" class="form" style="display:none;">
+        <h3>Edycja modułu</h3>
+        <label>Tytuł <input id="m_title"></label>
+        <label>Wideo URL <input id="m_video"></label>
+        <label>Treść HTML <textarea id="m_html" rows="8"></textarea></label>
+        <label><input type="checkbox" id="m_req"> Wymaga quizu</label>
+        <label>Próg zaliczenia (%) <input type="number" id="m_pass" value="70"></label>
+        <label>Limit prób <input type="number" id="m_limit" value="3"></label>
+        <label>Status
+          <select id="m_status">
+            <option value="draft">draft</option>
+            <option value="published">published</option>
+          </select>
+        </label>
+        <label>Quiz JSON <textarea id="m_quiz" rows="6" placeholder='{"questions":[{"type":"single","q":"","options":["A","B"],"correct":0}]}'></textarea></label>
+        <div class="row">
+          <button class="btn" type="submit">Zapisz</button>
+        </div>
+      </form>
+
+      <h3>Kolejność modułów</h3>
+      <div id="order"></div>
+      <button id="saveOrder" class="btn">Zapisz kolejność</button>
+
+      <p id="msg" class="muted"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api } from './js/api.js';
+    import { requireAuthOrRedirect } from './js/auth.js';
+    await requireAuthOrRedirect();
+
+    tinymce.init({ selector: '#m_html', menubar:false, height:300 });
+
+    const courseIdEl = document.getElementById('courseId');
+    const modsEl = document.getElementById('mods');
+    const msg = document.getElementById('msg');
+    const form = document.getElementById('editor');
+    const m_title = document.getElementById('m_title');
+    const m_video = document.getElementById('m_video');
+    const m_html = document.getElementById('m_html');
+    const m_req = document.getElementById('m_req');
+    const m_pass = document.getElementById('m_pass');
+    const m_limit = document.getElementById('m_limit');
+    const m_status = document.getElementById('m_status');
+    const m_quiz = document.getElementById('m_quiz');
+    const orderEl = document.getElementById('order');
+    let current;
+    let order = [];
+
+    async function load() {
+      msg.textContent = '';
+      const cid = Number(courseIdEl.value);
+      try {
+        const list = await api('/admin/modules/' + cid);
+        order = list.map(m => m.id);
+        modsEl.innerHTML = list.map(m => \`<button class="btn" data-id="\${m.id}">\${m.id}. \${m.title} (\${m.status})</button>\`).join(' ');
+        orderEl.innerHTML = list.map(m => \`
+          <div class="row" data-id="\${m.id}">
+            <span style="width:40px;display:inline-block;">\${m.id}</span>
+            <strong style="flex:1">\${m.title}</strong>
+            <button class="btn" data-move="-1">↑</button>
+            <button class="btn" data-move="1">↓</button>
+          </div>\`).join('');
+        orderEl.querySelectorAll('button[data-move]').forEach(btn => {
+          btn.addEventListener('click', (e)=>{
+            const delta = Number(e.currentTarget.getAttribute('data-move'));
+            const id = Number(e.currentTarget.parentElement.getAttribute('data-id'));
+            const idx = order.indexOf(id);
+            const j = idx + delta;
+            if (j >= 0 && j < order.length) {
+              [order[idx], order[j]] = [order[j], order[idx]];
+              renderOrder();
+            }
+          });
+        });
+        modsEl.querySelectorAll('button[data-id]').forEach(btn => {
+          btn.addEventListener('click', async (e)=>{
+            const id = Number(e.currentTarget.getAttribute('data-id'));
+            const data = await api(\`/admin/module/\${cid}/\${id}\`);
+            current = id;
+            m_title.value = data.title || '';
+            m_video.value = data.videoUrl || '';
+            tinymce.get('m_html').setContent(data.contentHtml || '');
+            m_req.checked = !!data.requiresQuiz;
+            m_pass.value = data.passScore || 70;
+            m_limit.value = data.attemptLimit || 3;
+            m_status.value = data.status || 'published';
+            m_quiz.value = JSON.stringify(data.quiz || {questions:[]}, null, 2);
+            form.style.display = 'grid';
+          });
+        });
+      } catch(e) {
+        msg.textContent = e.message || 'Błąd';
+      }
+    }
+    function renderOrder() {
+      const cid = Number(courseIdEl.value);
+      orderEl.querySelectorAll('.row').forEach(row => {
+        const id = Number(row.getAttribute('data-id'));
+        row.querySelector('span').textContent = (order.indexOf(id)+1);
+        orderEl.appendChild(row);
+      });
+    }
+    document.getElementById('load').addEventListener('click', load);
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      msg.textContent = 'Zapisywanie...';
+      try {
+        await api(\`/admin/module/\${Number(courseIdEl.value)}/\${current}\`, {
+          method:'POST',
+          body: {
+            title: m_title.value,
+            contentHtml: tinymce.get('m_html').getContent(),
+            videoUrl: m_video.value,
+            requiresQuiz: m_req.checked,
+            passScore: Number(m_pass.value||70),
+            attemptLimit: Number(m_limit.value||3),
+            status: m_status.value,
+            quiz: JSON.parse(m_quiz.value || '{"questions":[]}')
+          }
+        });
+        msg.textContent = 'Zapisano ✅';
+      } catch(e) {
+        msg.textContent = e.message || 'Błąd';
+      }
+    });
+
+    document.getElementById('saveOrder').addEventListener('click', async ()=>{
+      try {
+        await api(\`/admin/modules/\${Number(courseIdEl.value)}/reorder\`, { method:'POST', body:{ order } });
+        msg.textContent = 'Kolejność zapisana ✅';
+      } catch(e) { msg.textContent = e.message || 'Błąd'; }
+    });
+  </script>
+</body>
+</html>

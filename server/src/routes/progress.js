@@ -1,62 +1,51 @@
 import { Router } from 'express';
-import pg from 'pg';
-import { requireAuth } from '../middleware/auth.js';
+import { query } from '../db.js';
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const router = Router();
 
-router.post('/', requireAuth, async (req, res, next) => {
-  try {
-    const { moduleId } = req.body || {};
-    if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
+router.post('/:courseId/complete', async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const { moduleId } = req.body || {};
+  if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
 
-    // znajdź courseId tego modułu
-    const { rows: m } = await pool.query(
-      'select course_id from course_modules where id=$1',
-      [moduleId]
-    );
-    const courseId = m[0]?.course_id;
-    if (!courseId) return res.status(404).json({ error: 'Module not found' });
+  const email = req.user?.sub;
+  const u = await query('SELECT id FROM users WHERE email=$1', [email]);
+  if (u.rowCount === 0) return res.status(401).json({ error: 'User not found' });
+  const userId = u.rows[0].id;
 
-    // sprawdź, czy user ma dostęp do kursu
-    const { rows: a } = await pool.query(
-      'select 1 from user_course_access where user_id=$1 and course_id=$2',
-      [req.user.id, courseId]
-    );
-    if (!a[0]) return res.status(403).json({ error: 'No access to this course' });
+  const enr = await query('SELECT 1 FROM enrollments WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
+  if (enr.rowCount === 0) return res.status(403).json({ error: 'NOT_ENROLLED' });
 
-    await pool.query(
-      `insert into user_progress (user_id, module_id)
-       values ($1,$2) on conflict do nothing`,
-      [req.user.id, moduleId]
-    );
-    res.json({ ok: true });
-  } catch (e) { next(e); }
-});
+  const moduleRs = await query('SELECT requires_quiz, status FROM modules WHERE course_id=$1 AND module_no=$2', [courseId, moduleId]);
+  if (moduleRs.rowCount === 0) return res.status(404).json({ error: 'MODULE_NOT_FOUND' });
+  if (moduleRs.rows[0].status !== 'published') return res.status(403).json({ error: 'MODULE_DRAFT' });
+  if (moduleRs.rows[0].requires_quiz) return res.status(409).json({ error: 'QUIZ_REQUIRED' });
 
-router.get('/:courseId', requireAuth, async (req, res, next) => {
-  try {
-    const { courseId } = req.params;
+  const doneRs = await query('SELECT COUNT(*)::int AS done FROM progress WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
+  const done = doneRs.rows[0].done;
+  if (Number(moduleId) > done + 1) {
+    return res.status(409).json({ error: 'LOCKED' });
+  }
 
-    // sprawdź dostęp zanim pokażesz moduły
-    const { rows: a } = await pool.query(
-      'select 1 from user_course_access where user_id=$1 and course_id=$2',
-      [req.user.id, courseId]
-    );
-    if (!a[0]) return res.status(403).json({ error: 'No access to this course' });
+  await query('INSERT INTO progress (user_id, course_id, module_no) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+    [userId, courseId, moduleId]);
 
-    const { rows } = await pool.query(`
-      select cm.id as module_id, cm.title, cm.position,
-             (up.module_id is not null) as completed
-      from course_modules cm
-      left join user_progress up
-        on up.module_id = cm.id and up.user_id = $1
-      where cm.course_id = $2
-      order by cm.position
-    `, [req.user.id, courseId]);
-    res.json(rows);
-  } catch (e) { next(e); }
+  const m = await query(`SELECT module_no, title, requires_quiz FROM modules WHERE course_id=$1 AND status='published' ORDER BY module_no`, [courseId]);
+  const completedRows = await query('SELECT module_no FROM progress WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
+  const completedSet = new Set(completedRows.rows.map(r => Number(r.module_no)));
+  const completedCount = completedSet.size;
+  const total = m.rowCount;
+  const percent = total ? Math.round((completedCount / total) * 100) : 0;
+
+  const modules = m.rows.map(row => ({
+    id: Number(row.module_no),
+    title: row.title + (row.requires_quiz ? ' 📝' : ''),
+    completed: completedSet.has(Number(row.module_no)),
+    locked: Number(row.module_no) > completedCount + 1
+  }));
+
+  const title = (await query('SELECT title FROM courses WHERE id=$1', [courseId])).rows[0].title;
+  res.json({ id: courseId, title, percent, modules });
 });
 
 export default router;
