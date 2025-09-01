@@ -1,216 +1,104 @@
-import 'dotenv/config';
+// src/migrate.js
 import { query } from './db.js';
-import bcrypt from 'bcryptjs';
 
 async function migrate() {
-  // USERS
-  await query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT DEFAULT '',
-      role TEXT NOT NULL DEFAULT 'user',
-      email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ DEFAULT now()
-    );
-  `);
-  await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users(email);`);
-
-  // EMAIL VERIFICATIONS
-  await query(`
-    CREATE TABLE IF NOT EXISTS email_verifications (
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      token TEXT PRIMARY KEY,
-      created_at TIMESTAMPTZ DEFAULT now(),
-      used_at TIMESTAMPTZ
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_emailver_user ON email_verifications(user_id, created_at DESC);`);
-
-  // PASSWORD RESETS
-  await query(`
-    CREATE TABLE IF NOT EXISTS password_resets (
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      token TEXT PRIMARY KEY,
-      created_at TIMESTAMPTZ DEFAULT now(),
-      used_at TIMESTAMPTZ
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_pwreset_user ON password_resets(user_id, created_at DESC);`);
-
-  // REFRESH TOKENS
-  await query(`
-    CREATE TABLE IF NOT EXISTS refresh_tokens (
-      token TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      created_at TIMESTAMPTZ DEFAULT now(),
-      expires_at TIMESTAMPTZ NOT NULL,
-      revoked_at TIMESTAMPTZ
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_rtokens_user ON refresh_tokens(user_id, created_at DESC);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_rtokens_valid ON refresh_tokens(user_id) WHERE revoked_at IS NULL AND expires_at > now();`);
-
-  // COURSES
-  await query(`
-    CREATE TABLE IF NOT EXISTS courses (
-      id SERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      price_cents INTEGER NOT NULL DEFAULT 0
-    );
-  `);
-
-  // MODULES
-  await query(`
-    DO $$ BEGIN
-      CREATE TYPE module_status AS ENUM ('draft','published');
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
-  `);
-  await query(`
-    CREATE TABLE IF NOT EXISTS modules (
-      id SERIAL PRIMARY KEY,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      module_no INTEGER NOT NULL,
-      title TEXT NOT NULL,
-      content_html TEXT DEFAULT '',
-      video_url TEXT DEFAULT '',
-      requires_quiz BOOLEAN NOT NULL DEFAULT FALSE,
-      pass_score INTEGER NOT NULL DEFAULT 70,
-      attempt_limit INTEGER NOT NULL DEFAULT 3,
-      quiz_json TEXT DEFAULT '',
-      status module_status NOT NULL DEFAULT 'published',
-      published_at TIMESTAMPTZ,
-      UNIQUE(course_id, module_no)
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_modules_course ON modules(course_id, module_no);`);
-
-  // ENROLLMENTS
-  await query(`
-    CREATE TABLE IF NOT EXISTS enrollments (
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      created_at TIMESTAMPTZ DEFAULT now(),
-      PRIMARY KEY (user_id, course_id)
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_enrollments_user ON enrollments(user_id);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_enrollments_course ON enrollments(course_id);`);
-
-  // PROGRESS
-  await query(`
-    CREATE TABLE IF NOT EXISTS progress (
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      module_no INTEGER NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT now(),
-      PRIMARY KEY (user_id, course_id, module_no)
-    );
-  `);
-
-  // ORDERS
-  await query(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      amount_cents INTEGER NOT NULL,
-      currency TEXT NOT NULL DEFAULT 'PLN',
-      status TEXT NOT NULL DEFAULT 'pending',
-      created_at TIMESTAMPTZ DEFAULT now(),
-      paid_at TIMESTAMPTZ,
-      provider TEXT,
-      provider_order_id TEXT,
-      notify_payload JSONB
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_orders_user ON orders(user_id, created_at DESC);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_orders_course ON orders(course_id);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_orders_provider ON orders(provider, provider_order_id);`);
-
-  // QUIZ ATTEMPTS
-  await query(`
-    CREATE TABLE IF NOT EXISTS quiz_attempts (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      module_no INTEGER NOT NULL,
-      score INTEGER NOT NULL,
-      passed BOOLEAN NOT NULL,
-      answers JSONB NOT NULL DEFAULT '[]',
-      created_at TIMESTAMPTZ DEFAULT now()
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_attempts_user ON quiz_attempts(user_id, created_at DESC);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_attempts_course ON quiz_attempts(course_id, module_no);`);
-
-  // CERTIFICATES
-  await query(`
-    CREATE TABLE IF NOT EXISTS certificates (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      serial TEXT UNIQUE NOT NULL,
-      issued_at TIMESTAMPTZ DEFAULT now()
-    );
-  `);
-  await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_cert_serial ON certificates(serial);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_cert_user ON certificates(user_id);`);
-
-  // AUDIT LOG
-  await query(`
-    CREATE TABLE IF NOT EXISTS audit_log (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      action TEXT NOT NULL,
-      entity TEXT,
-      entity_id TEXT,
-      meta JSONB,
-      created_at TIMESTAMPTZ DEFAULT now()
-    );
-  `);
-  await query(`CREATE INDEX IF NOT EXISTS ix_audit_user ON audit_log(user_id, created_at DESC);`);
-  await query(`CREATE INDEX IF NOT EXISTS ix_audit_action ON audit_log(action, created_at DESC);`);
-
-  // Seed (przykładowe kursy/moduły)
-  await query(`
-    INSERT INTO courses (id, title, price_cents) VALUES
-      (1, 'Instruktor pływania', 29900),
-      (2, 'BJJ – fundamenty', 19900)
-    ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, price_cents = EXCLUDED.price_cents;
-  `);
-
-  await query(`
-    INSERT INTO modules (course_id, module_no, title, content_html, requires_quiz, pass_score, attempt_limit, quiz_json, status, published_at) VALUES
-      (1, 1, 'Wprowadzenie i BHP', '<p>Bezpieczeństwo na basenie...</p>', TRUE, 70, 3, '{"questions":[{"type":"single","q":"Co oznacza BHP?","options":["Bezpieczne Haki Pływackie","Bezpieczeństwo i Higiena Pracy"],"correct":1,"explain":"Standardowe rozwinięcie skrótu."}]}', 'published', now()),
-      (1, 2, 'Podstawy techniki pływackiej', '<p>Pozycja ciała...</p>', FALSE, 70, 3, '', 'published', now()),
-      (1, 3, 'Metodyka nauczania dzieci', '<p>Gry i zabawy...</p>', FALSE, 70, 3, '', 'draft', null),
-      (1, 4, 'Planowanie treningu', '<p>Makro i mikrocykle...</p>', FALSE, 70, 3, '', 'published', now()),
-      (1, 5, 'Egzamin końcowy', '<p>Test praktyczny...</p>', TRUE, 80, 2, '{"questions":[{"type":"single","q":"Ile stylów pływackich wyróżniamy?","options":["2","4","6"],"correct":1}]}', 'published', now()),
-      (2, 1, 'Pozycje bazowe', '<p>Closed guard, half guard...</p>', FALSE, 70, 3, '', 'published', now()),
-      (2, 2, 'Kontrole z góry', '<p>Stabilizacja pozycji...</p>', FALSE, 70, 3, '', 'published', now()),
-      (2, 3, 'Ucieczki z dołu', '<p>Hip escape...</p>', FALSE, 70, 3, '', 'published', now()),
-      (2, 4, 'Proste poddania', '<p>RNC, americana...</p>', FALSE, 70, 3, '', 'published', now())
-    ON CONFLICT (course_id, module_no) DO NOTHING;
-  `);
-
-  if (process.env.SEED_ADMIN === 'true') {
-    const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@local';
-    const pass = await bcrypt.hash(process.env.SEED_ADMIN_PASS || 'admin123', 10);
+  try {
+    // --- USERS ---
     await query(`
-      INSERT INTO users (email, password_hash, name, role, email_verified)
-      VALUES ($1, $2, 'Admin', 'admin', TRUE)
-      ON CONFLICT (email) DO NOTHING;
-    `, [adminEmail, pass]);
-  }
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
 
-  console.log('Migration OK');
+    // --- REFRESH TOKENS ---
+    await query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        revoked_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+
+    // poprawiony indeks — bez "now()" w predykacie
+    await query(`
+      DROP INDEX IF EXISTS ix_rtokens_valid;
+      CREATE INDEX IF NOT EXISTS ix_rtokens_valid
+      ON refresh_tokens(user_id)
+      WHERE revoked_at IS NULL;
+    `);
+
+    // --- COURSES ---
+    await query(`
+      CREATE TABLE IF NOT EXISTS courses (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+
+    // --- MODULES ---
+    await query(`
+      CREATE TABLE IF NOT EXISTS modules (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        content TEXT,
+        "index" INTEGER NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+
+    // --- PROGRESS ---
+    await query(`
+      CREATE TABLE IF NOT EXISTS progress (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        last_completed_index INTEGER DEFAULT -1,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now(),
+        UNIQUE(user_id, course_id)
+      );
+    `);
+
+    // --- QUIZ RESULTS ---
+    await query(`
+      CREATE TABLE IF NOT EXISTS quiz_results (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        module_id INTEGER NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+        score INTEGER NOT NULL,
+        passed BOOLEAN NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+
+    // --- PURCHASES ---
+    await query(`
+      CREATE TABLE IF NOT EXISTS purchases (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+
+    console.log('✅ Migracje zakończone powodzeniem');
+  } catch (err) {
+    console.error('❌ Migration failed:', err);
+    process.exit(1);
+  }
 }
 
-migrate().catch(e => {
-  console.error('Migration failed:', e);
-  process.exitCode = 1;
-});
+migrate();

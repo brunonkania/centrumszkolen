@@ -1,51 +1,73 @@
 import { Router } from 'express';
-import { query } from '../db.js';
+import { validate } from '../middleware/validate.js';
+import { completeModuleParams, completeModuleBody } from '../schemas/progress.js';
+import { query } from '../db.js'; // <- masz już taką funkcję
 
 const router = Router();
 
-router.post('/:courseId/complete', async (req, res) => {
-  const courseId = Number(req.params.courseId);
-  const { moduleId } = req.body || {};
-  if (!moduleId) return res.status(400).json({ error: 'moduleId required' });
+// Uwaga: wymagany middleware auth, który ustawia req.user.id
+// router.use(requireAuth);
 
-  const email = req.user?.sub;
-  const u = await query('SELECT id FROM users WHERE email=$1', [email]);
-  if (u.rowCount === 0) return res.status(401).json({ error: 'User not found' });
-  const userId = u.rows[0].id;
+router.post(
+  '/:courseId/complete',
+  validate({ params: completeModuleParams, body: completeModuleBody }),
+  async (req, res, next) => {
+    const userId = req.user?.id; // MUSI istnieć
+    if (!userId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
 
-  const enr = await query('SELECT 1 FROM enrollments WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
-  if (enr.rowCount === 0) return res.status(403).json({ error: 'NOT_ENROLLED' });
+    const { courseId } = req.params;
+    const { moduleIndex } = req.body;
 
-  const moduleRs = await query('SELECT requires_quiz, status FROM modules WHERE course_id=$1 AND module_no=$2', [courseId, moduleId]);
-  if (moduleRs.rowCount === 0) return res.status(404).json({ error: 'MODULE_NOT_FOUND' });
-  if (moduleRs.rows[0].status !== 'published') return res.status(403).json({ error: 'MODULE_DRAFT' });
-  if (moduleRs.rows[0].requires_quiz) return res.status(409).json({ error: 'QUIZ_REQUIRED' });
+    // TODO: jeśli masz tabelę purchases / access – zweryfikuj dostęp:
+    // const hasAccess = await query('SELECT 1 FROM purchases WHERE user_id=$1 AND course_id=$2 AND status=$3', [userId, courseId, 'paid']);
 
-  const doneRs = await query('SELECT COUNT(*)::int AS done FROM progress WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
-  const done = doneRs.rows[0].done;
-  if (Number(moduleId) > done + 1) {
-    return res.status(409).json({ error: 'LOCKED' });
+    try {
+      await query('BEGIN');
+
+      // zablokuj wiersz postępu (lub sprawdź istniejący)
+      const progRes = await query(
+        `SELECT id, last_completed_index
+           FROM progress
+          WHERE user_id = $1 AND course_id = $2
+          FOR UPDATE`,
+        [userId, courseId]
+      );
+
+      let last = -1;
+      if (progRes.rowCount) {
+        last = progRes.rows[0].last_completed_index ?? -1;
+      }
+
+      if (moduleIndex !== last + 1) {
+        await query('ROLLBACK');
+        return res.status(409).json({
+          error: 'INVALID_PROGRESS_ORDER',
+          message: `Oczekiwany moduł: ${last + 1}, otrzymano: ${moduleIndex}`,
+        });
+      }
+
+      if (progRes.rowCount) {
+        await query(
+          `UPDATE progress
+              SET last_completed_index = $1, updated_at = now()
+            WHERE id = $2`,
+          [moduleIndex, progRes.rows[0].id]
+        );
+      } else {
+        await query(
+          `INSERT INTO progress (user_id, course_id, last_completed_index, created_at, updated_at)
+           VALUES ($1, $2, $3, now(), now())`,
+          [userId, courseId, moduleIndex]
+        );
+      }
+
+      await query('COMMIT');
+      return res.json({ ok: true, lastCompletedIndex: moduleIndex });
+    } catch (err) {
+      try { await query('ROLLBACK'); } catch {}
+      return next(err);
+    }
   }
-
-  await query('INSERT INTO progress (user_id, course_id, module_no) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-    [userId, courseId, moduleId]);
-
-  const m = await query(`SELECT module_no, title, requires_quiz FROM modules WHERE course_id=$1 AND status='published' ORDER BY module_no`, [courseId]);
-  const completedRows = await query('SELECT module_no FROM progress WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
-  const completedSet = new Set(completedRows.rows.map(r => Number(r.module_no)));
-  const completedCount = completedSet.size;
-  const total = m.rowCount;
-  const percent = total ? Math.round((completedCount / total) * 100) : 0;
-
-  const modules = m.rows.map(row => ({
-    id: Number(row.module_no),
-    title: row.title + (row.requires_quiz ? ' 📝' : ''),
-    completed: completedSet.has(Number(row.module_no)),
-    locked: Number(row.module_no) > completedCount + 1
-  }));
-
-  const title = (await query('SELECT title FROM courses WHERE id=$1', [courseId])).rows[0].title;
-  res.json({ id: courseId, title, percent, modules });
-});
+);
 
 export default router;

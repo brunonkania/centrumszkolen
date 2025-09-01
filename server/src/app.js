@@ -1,109 +1,55 @@
+// src/app.js
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
-import * as Sentry from '@sentry/node';
-import { Registry, collectDefaultMetrics, Counter } from 'prom-client';
+import helmet from 'helmet';
+import compression from 'compression';
 
-import { attachSecurity, csrfProtection } from './middleware/security.js';
-import { requireAuth } from './middleware/auth.js';
-import { requireMetricsAuth } from './middleware/metricsAuth.js';
-
+import { env } from './config/env.js';
 import authRouter from './routes/auth.js';
-import catalogRouter from './routes/catalog.js';
 import coursesRouter from './routes/courses.js';
-import modulesRouter from './routes/modules.js';
-import quizRouter from './routes/quiz.js';
 import progressRouter from './routes/progress.js';
-import certificatesRouter from './routes/certificates.js';
-import adminRouter from './routes/admin.js';
-import accountRouter from './routes/account.js';
-import paymentsRouter from './routes/payments.js';
-
-import { pool } from './db.js';
+import purchaseRouter from './routes/purchase.js';
+import { notFound, errorHandler } from './middleware/error.js';
 
 const app = express();
 
-if (process.env.SENTRY_DSN) {
-  Sentry.init({ dsn: process.env.SENTRY_DSN });
-  app.use(Sentry.Handlers.requestHandler());
-}
+/**
+ * Jeśli kiedyś uruchomisz za proxy (np. Docker/Nginx/Render/Heroku),
+ * odkomentuj poniższe, aby poprawnie działały ciasteczka Secure:
+ */
+// if (env.COOKIE_SECURE) app.set('trust proxy', 1);
 
-app.use(morgan('tiny'));
-app.use(express.json({ limit: '2mb' }));
-app.use(cookieParser());
+// Bezpieczne nagłówki (CSP dopasujesz później, gdy ustalisz dokładne źródła skryptów/stylów)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
-// CORS whitelist
-const corsOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (corsOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error('CORS_BLOCKED'), false);
-  },
-  credentials: true
-}));
+// CORS – dopuszczamy wyłącznie front z FRONT_URL i przekazujemy ciasteczka
+app.use(
+  cors({
+    origin: env.FRONT_URL,
+    credentials: true,
+  })
+);
 
-attachSecurity(app);
+// Kompresja odpowiedzi
+app.use(compression());
 
-// Metrics
-const registry = new Registry();
-collectDefaultMetrics({ register: registry });
-const httpCounter = new Counter({
-  name: 'http_requests_total',
-  help: 'Total HTTP requests',
-  labelNames: ['method', 'route', 'status'],
-  registers: [registry]
-});
-app.use((req, res, next) => {
-  res.on('finish', () => {
-    httpCounter.labels(req.method, req.path, String(res.statusCode)).inc();
-  });
-  next();
-});
+// Parsowanie ciała żądania
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
 
-app.get('/healthz', async (_req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({ ok: true, db: 'up' });
-  } catch (e) {
-    res.status(500).json({ ok: false, db: 'down' });
-  }
-});
-
-// ZABEZPIECZONE /metrics nagłówkiem Bearer
-app.get('/metrics', requireMetricsAuth, async (_req, res) => {
-  res.setHeader('Content-Type', registry.contentType);
-  res.end(await registry.metrics());
-});
-
-// Public
-app.get('/health', (_req, res) => res.json({ ok: true }));
+// ----------------- ROUTERY API -----------------
 app.use('/auth', authRouter);
-app.use('/catalog', catalogRouter);
+app.use('/courses', coursesRouter);
+app.use('/progress', progressRouter);
+app.use('/purchase', purchaseRouter);
 
-// CSRF dla metod modyfikujących
-app.use(csrfProtection);
+// 404 + globalny handler błędów (na końcu łańcucha)
+app.use(notFound);
+app.use(errorHandler);
 
-// Protected
-app.use('/courses', requireAuth, coursesRouter);
-app.use('/modules', requireAuth, modulesRouter);
-app.use('/quiz', requireAuth, quizRouter);
-app.use('/progress', requireAuth, progressRouter);
-app.use('/certificates', requireAuth, certificatesRouter);
-app.use('/admin', requireAuth, adminRouter);
-app.use('/account', requireAuth, accountRouter);
-
-// Payments (create wymaga auth; return/notify public)
-app.use('/payments', paymentsRouter);
-
-app.use((err, req, res, next) => {
-  console.error(err);
-  if (process.env.SENTRY_DSN) Sentry.captureException(err);
-  const status = err.status || 500;
-  res.status(status).json({ error: err.code || 'Internal error' });
-});
-
-const port = process.env.PORT || 3001;
-app.listen(port, () => console.log(`API listening on :${port}`));
+export default app;
