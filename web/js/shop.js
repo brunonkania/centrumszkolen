@@ -1,26 +1,34 @@
-import { api } from './js/api.js';
-import { requireAuthOrRedirect } from './js/auth.js';
+import { api } from './api.js';
+import { requireAuthOrRedirect } from './api.js';
 
-await requireAuthOrRedirect();
+async function init() {
+  const user = await requireAuthOrRedirect();
+  if (!user) return;
 
-const catalogEl = document.getElementById('catalog');
-const msgEl = document.getElementById('msg');
+  const courseId = Number(new URLSearchParams(location.search).get('course') || 1);
+  const msg = document.getElementById('msg');
+  const payBtn = document.getElementById('payBtn');
 
-async function loadCatalog() {
-  try {
-    const list = await api('/catalog');
-    catalogEl.innerHTML = list.map(item => `
-      <div class="card">
-        <h3>${item.title}</h3>
-        <p class="muted">Cena: ${item.price.toFixed(2)} zł</p>
-        ${item.enrolled
-          ? '<p class="muted">Masz dostęp ✅</p>'
-          : `<p class="muted">Płatności w kolejnym etapie.</p>`}
-      </div>
-    `).join('');
-  } catch (e) {
-    msgEl.textContent = e.message || 'Nie udało się wczytać katalogu.';
-  }
+  payBtn?.addEventListener('click', async () => {
+    msg.textContent = 'Tworzę zamówienie...';
+    try {
+      const res = await api('/payments/create', { method: 'POST', body: { courseId } });
+      if (res.redirectUrl) {
+        location.href = res.redirectUrl;
+      } else {
+        msg.textContent = 'Zamówienie utworzone, oczekuję na płatność...';
+      }
+    } catch (e) {
+      if (e.code === 'PAYMENTS_DISABLED') {
+        msg.textContent = 'Płatności chwilowo wyłączone. Zapisaliśmy Twoje zamówienie – wróć tu wkrótce. 👍';
+      } else if (e.code === 'ALREADY_ENROLLED') {
+        msg.textContent = 'Masz już dostęp do kursu. Przekierowuję do panelu...';
+        setTimeout(() => location.replace('./panel.html'), 800);
+      } else {
+        msg.textContent = e.message || 'Nie udało się utworzyć zamówienia.';
+      }
+    }
+  });
 }
 
-loadCatalog();
+document.addEventListener('DOMContentLoaded', init);

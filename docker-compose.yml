@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: centrum
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://app:app@db:5432/centrum
+      JWT_SECRET: please_change_me
+      APP_URL: http://localhost:3001
+      FRONT_URL: http://localhost
+      CORS_ORIGIN: http://localhost
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: lax
+      PAYMENTS_ENABLED: "false"
+      PAYMENTS_PROVIDER: P24
+      CSP_CONNECT_SRC: http://localhost
+    depends_on:
+      - db
+    ports:
+      - "3001:3001"
+
+  nginx:
+    image: nginx:1.27
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web:/var/www/html:ro
+    depends_on:
+      - server
+
+volumes:
+  dbdata:

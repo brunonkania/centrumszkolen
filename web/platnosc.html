@@ -3,45 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Płatność (DEV) – Centrum Szkoleń</title>
+  <title>Status płatności</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="topnav">
+      <a href="./panel.html">Moje kursy</a>
+      <button id="logoutBtn" class="btn btn-secondary">Wyloguj</button>
+    </nav>
+  </header>
+
   <main class="container">
-    <section class="card" style="max-width:520px;margin:40px auto;">
-      <h2>Płatność testowa (DEV)</h2>
-      <p class="muted">To jest symulacja operatora płatności. Kliknij „Opłać” by zakończyć.</p>
-      <div class="row">
-        <button id="pay" class="btn">Opłać ✅</button>
-        <button id="cancel" class="btn">Anuluj ❌</button>
-      </div>
-      <p id="msg" class="muted"></p>
+    <section class="card" style="max-width:560px;margin:40px auto;">
+      <h2>Status płatności</h2>
+      <p class="muted">Jeśli płatność się powiodła, dostęp pojawi się w „Moje kursy”.</p>
+      <a class="btn" href="./panel.html">Przejdź do panelu</a>
+      <p id="msg" class="muted" style="min-height:1.4em;"></p>
     </section>
   </main>
-  <script type="module">
-    import { api } from './js/api.js';
-    import { requireAuthOrRedirect } from './js/auth.js';
-    requireAuthOrRedirect();
 
-    const sp = new URLSearchParams(location.search);
-    const orderId = Number(sp.get('order') || 0);
-    const msg = document.getElementById('msg');
-
-    document.getElementById('pay').addEventListener('click', async ()=>{
-      msg.textContent = 'Finalizowanie...';
-      try {
-        await api('/checkout/simulate-pay', { method:'POST', body:{ orderId, success:true }, auth:true });
-        location.replace('./sklep.html?paid=1');
-      } catch(e) { msg.textContent = e.message || 'Błąd'; }
-    });
-
-    document.getElementById('cancel').addEventListener('click', async ()=>{
-      msg.textContent = 'Anulowanie...';
-      try {
-        await api('/checkout/simulate-pay', { method:'POST', body:{ orderId, success:false }, auth:true });
-        location.replace('./sklep.html?cancel=1');
-      } catch(e) { msg.textContent = e.message || 'Błąd'; }
-    });
+  <script>
+    const params = new URLSearchParams(location.search);
+    const orderId = params.get('order');
+    if (orderId) {
+      document.getElementById('msg').textContent = `ID zamówienia: ${orderId}`;
+    }
   </script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

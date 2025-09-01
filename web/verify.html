@@ -10,28 +10,41 @@
   <main class="container">
     <section class="card" style="max-width:520px;margin:40px auto;">
       <h2>Weryfikacja e-maila</h2>
-      <p class="muted">Jeśli masz token w linku, po prostu wklej go poniżej.</p>
+      <p class="muted">Masz link z tokenem? Formularz spróbuje wypełnić token automatycznie.</p>
       <form id="form" class="form">
         <label>Token <input id="token" required></label>
         <button class="btn" type="submit">Potwierdź</button>
+        <p id="msg" class="muted" style="min-height:1.4em;"></p>
       </form>
-      <p id="msg" class="muted"></p>
+      <p class="muted" style="margin-top:8px;">
+        Jeśli link wygasł, spróbuj <a href="./logowanie.html">zalogować się</a> – tam znajdziesz opcję „Wyślij ponownie link”.
+      </p>
     </section>
   </main>
+
   <script type="module">
     import { api } from './js/api.js';
-    const sp = new URLSearchParams(location.search);
+
+    const params = new URLSearchParams(location.search);
+    const tokenParam = params.get('token');
     const tokenField = document.getElementById('token');
-    const token = sp.get('token');
-    if (token) tokenField.value = token;
-    document.getElementById('form').addEventListener('submit', async (e)=>{
+    if (tokenParam) tokenField.value = tokenParam;
+
+    document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const t = tokenField.value.trim();
+      const msgEl = document.getElementById('msg');
+      msgEl.textContent = 'Weryfikuję...';
       try {
-        await api('/auth/verify', { method:'POST', body: { token: t } });
-        document.getElementById('msg').textContent = 'Zweryfikowano ✅';
+        await api('/auth/verify', { method: 'POST', body: { token: t } });
+        msgEl.textContent = 'Zweryfikowano ✅. Przenoszę na panel...';
+        setTimeout(() => location.replace('./panel.html'), 800);
       } catch (e) {
-        document.getElementById('msg').textContent = e.message || 'Błąd';
+        if (e && e.code === 'INVALID_TOKEN') {
+          msgEl.textContent = 'Token nieprawidłowy lub już użyty.';
+        } else {
+          msgEl.textContent = e.message || 'Błąd';
+        }
       }
     });
   </script>

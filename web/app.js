@@ -1,4 +1,5 @@
-const API = 'http://localhost:3001';
+// Małe utilsy UI + globalny logout przez wrapper API
+const API = window.__API__ || 'http://localhost:3001';
 
 function getCookie(name) {
   const v = document.cookie.split('; ').find(row => row.startsWith(name + '='));
@@ -10,39 +11,33 @@ export function showToast(msg) {
   if (!t) return;
   t.textContent = msg;
   t.style.display = 'block';
-  setTimeout(()=> t.style.display = 'none', 2000);
+  setTimeout(() => (t.style.display = 'none'), 2000);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const statusEl = document.getElementById('status');
-  if (statusEl) {
-    try {
-      const res = await fetch(`${API}/health`);
-      const data = await res.json().catch(()=> ({}));
-      statusEl.textContent = res.ok
-        ? `API OK ✅ ${JSON.stringify(data)}`
-        : `API błąd ❌ ${res.status}`;
-    } catch (e) {
-      statusEl.textContent = 'Brak połączenia z API ❌';
-      console.error(e);
-    }
-  }
-
-  // Cookie banner
-  const banner = document.getElementById('cookieBanner');
-  const accept = document.getElementById('cookieAccept');
-  if (banner && accept) {
-    if (!localStorage.getItem('cookie_ok')) banner.style.display = 'flex';
-    accept.addEventListener('click', () => {
-      localStorage.setItem('cookie_ok', '1');
+  // Baner cookies – jeśli masz na stronach
+  const banner = document.getElementById('cookiesBanner');
+  if (banner) {
+    const okBtn = banner.querySelector('button[data-accept]');
+    okBtn?.addEventListener('click', () => {
+      document.cookie = 'cookies_ok=1; path=/; max-age=31536000';
       banner.style.display = 'none';
     });
   }
 
+  // Globalny przycisk „Wyloguj”
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      await fetch(API + '/auth/logout', { method:'POST', credentials:'include', headers:{ 'x-csrf-token': getCookie('csrf') } });
+      try {
+        // korzystamy z fetch bezpośrednio tutaj, ale z pełną obsługą CSRF+cookies
+        const res = await fetch(API + '/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'x-csrf-token': getCookie('csrf') }
+        });
+        // ignorujemy zwrotkę – ważne, że cookie po stronie serwera zniknie
+      } catch {}
       localStorage.removeItem('user');
       alert('Wylogowano.');
       location.replace('./index.html');

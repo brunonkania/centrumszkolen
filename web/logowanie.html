@@ -14,61 +14,120 @@
   <main class="container">
     <section class="card" style="max-width:520px;margin:40px auto;">
       <h2>Zaloguj się</h2>
-      <form id="loginForm" class="form">
-        <label>Email <input type="email" id="email" required></label>
-        <label>Hasło <input type="password" id="password" required></label>
-        <button class="btn" type="submit">Zaloguj</button>
-      </form>
 
-      <hr class="divider" />
-      <h3>Nie masz konta?</h3>
-      <form id="regForm" class="form">
-        <label>Imię <input type="text" id="r_name" required></label>
-        <label>Email <input type="email" id="r_email" required></label>
-        <label>Hasło <input type="password" id="r_password" required></label>
-        <button class="btn ghost" type="submit">Zarejestruj</button>
-      </form>
+      <div class="grid-2">
+        <form id="loginForm" class="form">
+          <label>E-mail
+            <input id="email" type="email" required autocomplete="username" />
+          </label>
+          <label>Hasło
+            <input id="password" type="password" required autocomplete="current-password" />
+          </label>
+          <button class="btn" type="submit">Zaloguj</button>
+          <p id="loginMsg" class="muted" style="min-height:1.4em;"></p>
+          <div id="verifyBox" class="muted" style="display:none;">
+            <p>Adres e-mail niezweryfikowany.</p>
+            <p>
+              <button id="resendBtn" type="button" class="btn btn-secondary" style="margin-right:8px;">Wyślij ponownie link</button>
+              <a href="./verify.html">Mam token – potwierdź</a>
+            </p>
+            <p id="resendMsg" class="muted" style="min-height:1.4em;"></p>
+          </div>
+        </form>
 
-      <p>
-        <a href="./verify.html">Weryfikacja e-maila</a> •
+        <form id="registerForm" class="form">
+          <label>Imię i nazwisko
+            <input id="r_name" required />
+          </label>
+          <label>E-mail
+            <input id="r_email" type="email" required />
+          </label>
+          <label>Hasło
+            <input id="r_password" type="password" required minlength="6" />
+          </label>
+          <button class="btn" type="submit">Zarejestruj</button>
+          <p id="registerMsg" class="muted" style="min-height:1.4em;"></p>
+        </form>
+      </div>
+
+      <div class="muted" style="margin-top:8px;">
+        <a href="./verify.html">Potwierdź e-mail (mam token)</a> •
         <a href="./reset.html">Reset hasła</a>
-      </p>
-
-      <p id="msg" class="muted"></p>
+      </div>
     </section>
   </main>
 
   <script type="module">
-    import { login, register } from './js/auth.js';
-    import { showToast } from './app.js';
+    import { login, register, resendVerification } from './js/auth.js';
 
-    const msg = document.getElementById('msg');
+    const emailField = document.getElementById('email');
+    const passwordField = document.getElementById('password');
+    const loginMsg = document.getElementById('loginMsg');
+    const verifyBox = document.getElementById('verifyBox');
+    const resendBtn = document.getElementById('resendBtn');
+    const resendMsg = document.getElementById('resendMsg');
 
+    // LOGOWANIE
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      msg.textContent = 'Logowanie...';
+      loginMsg.textContent = 'Logowanie...';
+      verifyBox.style.display = 'none';
+      resendMsg.textContent = '';
       try {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const user = await login(email, password);
-        showToast('Zalogowano');
+        const email = emailField.value.trim();
+        const password = passwordField.value;
+        await login(email, password);
         location.replace('./panel.html');
       } catch (err) {
-        msg.textContent = err.message || 'Błąd logowania';
+        if (err && err.code === 'EMAIL_NOT_VERIFIED') {
+          loginMsg.textContent = '';
+          verifyBox.style.display = 'block';
+        } else if (err && err.code === 'INVALID_CREDENTIALS') {
+          loginMsg.textContent = 'Nieprawidłowy e-mail lub hasło.';
+        } else if (err && err.code === 'INVALID_INPUT') {
+          loginMsg.textContent = 'Uzupełnij poprawnie pola.';
+        } else {
+          loginMsg.textContent = err?.message || 'Błąd logowania';
+        }
       }
     });
 
-    document.getElementById('regForm').addEventListener('submit', async (e) => {
+    // WYŚLIJ PONOWNIE LINK WERYFIKACYJNY
+    resendBtn.addEventListener('click', async () => {
+      resendMsg.textContent = 'Wysyłam...';
+      try {
+        const email = emailField.value.trim();
+        if (!email) {
+          resendMsg.textContent = 'Podaj e-mail w polu logowania.';
+          return;
+        }
+        await resendVerification(email);
+        resendMsg.textContent = 'Wysłano link. Sprawdź skrzynkę.';
+      } catch (e) {
+        resendMsg.textContent = e?.message || 'Nie udało się wysłać linku.';
+      }
+    });
+
+    // REJESTRACJA
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const msg = document.getElementById('registerMsg');
       msg.textContent = 'Rejestracja...';
       try {
         const name = document.getElementById('r_name').value.trim();
         const email = document.getElementById('r_email').value.trim();
         const password = document.getElementById('r_password').value;
-        const res = await register(name, email, password);
-        msg.innerHTML = 'Rejestracja OK. Link weryfikacyjny (DEV):<br><code>'+ (res.verify_link || '') +'</code>';
+
+        await register(name, email, password);
+        msg.innerHTML = 'Konto utworzone ✅. Sprawdź e-mail i kliknij link weryfikacyjny. Potem zaloguj się.';
       } catch (err) {
-        msg.textContent = err.message || 'Błąd rejestracji';
+        if (err && err.code === 'EMAIL_TAKEN') {
+          msg.textContent = 'Ten e-mail jest już zajęty.';
+        } else if (err && err.code === 'INVALID_INPUT') {
+          msg.textContent = 'Uzupełnij poprawnie wszystkie pola.';
+        } else {
+          msg.textContent = err?.message || 'Błąd rejestracji';
+        }
       }
     });
   </script>

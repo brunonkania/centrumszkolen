@@ -1,4 +1,4 @@
-const API = 'http://localhost:3001';
+const API = window.__API__ || 'http://localhost:3001';
 
 function getCookie(name) {
   const v = document.cookie.split('; ').find(row => row.startsWith(name + '='));
@@ -6,37 +6,37 @@ function getCookie(name) {
 }
 
 export async function api(path, { method = 'GET', body } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  // CSRF only for unsafe methods
-  if (/^(POST|PUT|PATCH|DELETE)$/i.test(method || 'GET')) {
-    headers['x-csrf-token'] = getCookie('csrf');
-  }
+  const isUnsafe = /^(POST|PUT|PATCH|DELETE)$/i.test(method || 'GET');
+
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (isUnsafe) headers['x-csrf-token'] = getCookie('csrf');
+
   const res = await fetch(`${API}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include'
+    credentials: 'include',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401 && path !== '/auth/refresh') {
-    // Try refresh once
-    const r = await fetch(API + '/auth/refresh', { method:'POST', credentials:'include', headers: { 'x-csrf-token': getCookie('csrf') } });
-    if (r.ok) {
-      const retry = await fetch(`${API}${path}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        credentials: 'include'
-      });
-      if (!retry.ok) throw new Error((await safeJson(retry)).error || 'API error');
-      return safeJson(retry);
-    }
+
+  let data = null;
+  try { data = await res.json(); } catch {}
+
+  if (!res.ok) {
+    const err = new Error(
+      (data && (data.message || data.error)) ||
+      `HTTP ${res.status}`
+    );
+    if (data && data.error) err.code = data.error;
+    err.status = res.status;
+    throw err;
   }
-  if (!res.ok) throw new Error((await safeJson(res)).error || 'API error');
-  return safeJson(res);
+
+  return data === null ? {} : data;
 }
 
-async function safeJson(res) {
-  try { return await res.json(); } catch { return {}; }
+export async function health() {
+  return api('/health');
 }
 
 export function currentUser() {
@@ -48,7 +48,8 @@ export async function requireAuthOrRedirect() {
     const { user } = await api('/auth/me');
     localStorage.setItem('user', JSON.stringify(user));
     return user;
-  } catch {
+  } catch (e) {
     location.replace('./logowanie.html');
+    return null;
   }
 }

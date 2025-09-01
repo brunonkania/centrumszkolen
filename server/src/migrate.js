@@ -3,6 +3,7 @@ import { query } from './db.js';
 import bcrypt from 'bcryptjs';
 
 async function migrate() {
+  // USERS
   await query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -14,7 +15,9 @@ async function migrate() {
       created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
+  await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users(email);`);
 
+  // EMAIL VERIFICATIONS
   await query(`
     CREATE TABLE IF NOT EXISTS email_verifications (
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -23,7 +26,9 @@ async function migrate() {
       used_at TIMESTAMPTZ
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_emailver_user ON email_verifications(user_id, created_at DESC);`);
 
+  // PASSWORD RESETS
   await query(`
     CREATE TABLE IF NOT EXISTS password_resets (
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -32,7 +37,9 @@ async function migrate() {
       used_at TIMESTAMPTZ
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_pwreset_user ON password_resets(user_id, created_at DESC);`);
 
+  // REFRESH TOKENS
   await query(`
     CREATE TABLE IF NOT EXISTS refresh_tokens (
       token TEXT PRIMARY KEY,
@@ -42,7 +49,10 @@ async function migrate() {
       revoked_at TIMESTAMPTZ
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_rtokens_user ON refresh_tokens(user_id, created_at DESC);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_rtokens_valid ON refresh_tokens(user_id) WHERE revoked_at IS NULL AND expires_at > now();`);
 
+  // COURSES
   await query(`
     CREATE TABLE IF NOT EXISTS courses (
       id SERIAL PRIMARY KEY,
@@ -51,6 +61,7 @@ async function migrate() {
     );
   `);
 
+  // MODULES
   await query(`
     DO $$ BEGIN
       CREATE TYPE module_status AS ENUM ('draft','published');
@@ -58,7 +69,6 @@ async function migrate() {
       WHEN duplicate_object THEN null;
     END $$;
   `);
-
   await query(`
     CREATE TABLE IF NOT EXISTS modules (
       id SERIAL PRIMARY KEY,
@@ -76,7 +86,9 @@ async function migrate() {
       UNIQUE(course_id, module_no)
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_modules_course ON modules(course_id, module_no);`);
 
+  // ENROLLMENTS
   await query(`
     CREATE TABLE IF NOT EXISTS enrollments (
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -85,7 +97,10 @@ async function migrate() {
       PRIMARY KEY (user_id, course_id)
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_enrollments_user ON enrollments(user_id);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_enrollments_course ON enrollments(course_id);`);
 
+  // PROGRESS
   await query(`
     CREATE TABLE IF NOT EXISTS progress (
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -96,6 +111,7 @@ async function migrate() {
     );
   `);
 
+  // ORDERS
   await query(`
     CREATE TABLE IF NOT EXISTS orders (
       id SERIAL PRIMARY KEY,
@@ -105,10 +121,17 @@ async function migrate() {
       currency TEXT NOT NULL DEFAULT 'PLN',
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TIMESTAMPTZ DEFAULT now(),
-      paid_at TIMESTAMPTZ
+      paid_at TIMESTAMPTZ,
+      provider TEXT,
+      provider_order_id TEXT,
+      notify_payload JSONB
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_orders_user ON orders(user_id, created_at DESC);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_orders_course ON orders(course_id);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_orders_provider ON orders(provider, provider_order_id);`);
 
+  // QUIZ ATTEMPTS
   await query(`
     CREATE TABLE IF NOT EXISTS quiz_attempts (
       id SERIAL PRIMARY KEY,
@@ -121,7 +144,10 @@ async function migrate() {
       created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_attempts_user ON quiz_attempts(user_id, created_at DESC);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_attempts_course ON quiz_attempts(course_id, module_no);`);
 
+  // CERTIFICATES
   await query(`
     CREATE TABLE IF NOT EXISTS certificates (
       id SERIAL PRIMARY KEY,
@@ -131,8 +157,25 @@ async function migrate() {
       issued_at TIMESTAMPTZ DEFAULT now()
     );
   `);
+  await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_cert_serial ON certificates(serial);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_cert_user ON certificates(user_id);`);
 
-  // Seed data
+  // AUDIT LOG
+  await query(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      action TEXT NOT NULL,
+      entity TEXT,
+      entity_id TEXT,
+      meta JSONB,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS ix_audit_user ON audit_log(user_id, created_at DESC);`);
+  await query(`CREATE INDEX IF NOT EXISTS ix_audit_action ON audit_log(action, created_at DESC);`);
+
+  // Seed (przykładowe kursy/moduły)
   await query(`
     INSERT INTO courses (id, title, price_cents) VALUES
       (1, 'Instruktor pływania', 29900),
@@ -154,14 +197,15 @@ async function migrate() {
     ON CONFLICT (course_id, module_no) DO NOTHING;
   `);
 
-  // Seed admin
-  const adminEmail = 'admin@local';
-  const pass = await bcrypt.hash('admin123', 10);
-  await query(`
-    INSERT INTO users (email, password_hash, name, role, email_verified)
-    VALUES ($1, $2, 'Admin', 'admin', TRUE)
-    ON CONFLICT (email) DO NOTHING;
-  `, [adminEmail, pass]);
+  if (process.env.SEED_ADMIN === 'true') {
+    const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@local';
+    const pass = await bcrypt.hash(process.env.SEED_ADMIN_PASS || 'admin123', 10);
+    await query(`
+      INSERT INTO users (email, password_hash, name, role, email_verified)
+      VALUES ($1, $2, 'Admin', 'admin', TRUE)
+      ON CONFLICT (email) DO NOTHING;
+    `, [adminEmail, pass]);
+  }
 
   console.log('Migration OK');
 }

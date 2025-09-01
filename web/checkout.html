@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zakup kursu</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+    <nav class="topnav">
+      <a href="./panel.html">Moje kursy</a>
+      <button id="logoutBtn" class="btn btn-secondary">Wyloguj</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card" style="max-width:560px;margin:40px auto;">
+      <h2>Podsumowanie</h2>
+      <p>Zakup wybranego kursu. Po opłaceniu dostęp pojawi się w „Moje kursy”.</p>
+      <button id="payBtn" class="btn">Kup teraz</button>
+      <p id="msg" class="muted" style="min-height:1.4em;"></p>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+  <script type="module" src="./js/shop.js"></script>
+</body>
+</html>

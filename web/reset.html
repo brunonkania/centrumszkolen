@@ -10,46 +10,63 @@
   <main class="container">
     <section class="card" style="max-width:520px;margin:40px auto;">
       <h2>Reset hasła</h2>
+
+      <h3>Krok 1: Wyślij link resetu</h3>
       <form id="request" class="form">
         <label>Email <input id="email" type="email" required></label>
-        <button class="btn" type="submit">Wyślij link (DEV)</button>
+        <button class="btn" type="submit">Wyślij link</button>
+        <p id="msg1" class="muted" style="min-height:1.4em;"></p>
       </form>
 
-      <hr class="divider" />
+      <hr style="margin:24px 0; opacity:.2;" />
 
-      <form id="change" class="form">
-        <label>Token <input id="token" required></label>
-        <label>Nowe hasło <input id="password" type="password" required></label>
+      <h3>Krok 2: Ustaw nowe hasło</h3>
+      <form id="reset" class="form">
+        <label>Token z e-maila <input id="token" required></label>
+        <label>Nowe hasło <input id="password" type="password" required minlength="6"></label>
         <button class="btn" type="submit">Ustaw hasło</button>
+        <p id="msg2" class="muted" style="min-height:1.4em;"></p>
       </form>
 
-      <p id="msg" class="muted"></p>
+      <p class="muted" style="margin-top:8px;">
+        Masz token w URL? Przejdź do <a href="./verify.html">weryfikacji e-maila</a> lub wklej go powyżej, jeśli to reset hasła.
+      </p>
     </section>
   </main>
+
   <script type="module">
     import { api } from './js/api.js';
-    const msg = document.getElementById('msg');
-    document.getElementById('request').addEventListener('submit', async (e)=>{
+
+    // Krok 1: wysłanie linku
+    document.getElementById('request').addEventListener('submit', async (e) => {
       e.preventDefault();
-      msg.textContent = 'Wysyłanie...';
+      const msg = document.getElementById('msg1');
+      msg.textContent = 'Wysyłam...';
       try {
         const email = document.getElementById('email').value.trim();
-        const res = await api('/auth/password/forgot', { method:'POST', body:{ email } });
-        msg.innerHTML = 'Link (DEV): <code>' + (res.reset_link || '') + '</code>';
+        await api('/auth/password/forgot', { method: 'POST', body: { email } });
+        msg.textContent = 'Jeśli konto istnieje — link został wysłany. Sprawdź skrzynkę.';
       } catch (e) {
         msg.textContent = e.message || 'Błąd';
       }
     });
-    document.getElementById('change').addEventListener('submit', async (e)=>{
+
+    // Krok 2: ustawienie nowego hasła
+    document.getElementById('reset').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const msg = document.getElementById('msg2');
       msg.textContent = 'Zmiana...';
       try {
         const token = document.getElementById('token').value.trim();
         const password = document.getElementById('password').value;
-        await api('/auth/password/reset', { method:'POST', body:{ token, password } });
-        msg.textContent = 'Hasło zmienione ✅';
+        await api('/auth/password/reset', { method: 'POST', body: { token, password } });
+        msg.textContent = 'Hasło zmienione ✅. Możesz się zalogować.';
       } catch (e) {
-        msg.textContent = e.message || 'Błąd';
+        if (e && e.code === 'INVALID_TOKEN') {
+          msg.textContent = 'Token nieprawidłowy lub wygasł.';
+        } else {
+          msg.textContent = e.message || 'Błąd';
+        }
       }
     });
   </script>

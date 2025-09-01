@@ -1,75 +1,77 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { query } from '../db.js';
-import sanitizeHtml from 'sanitize-html';
+import { logAudit } from '../middleware/audit.js';
 
 const router = Router();
 
+/**
+ * GET /courses
+ * Zwraca kursy użytkownika (z enrollments) z opcją include=modules (tylko meta).
+ */
 router.get('/', async (req, res) => {
-  const email = req.user?.sub;
-  const u = await query('SELECT id FROM users WHERE email=$1', [email]);
-  if (u.rowCount === 0) return res.status(401).json({ error: 'User not found' });
-  const userId = u.rows[0].id;
+  const qschema = z.object({
+    include: z.string().optional()
+  });
+  const parsed = qschema.safeParse(req.query || {});
+  const includeModules = parsed.success && parsed.data.include === 'modules';
+
+  const me = await query('SELECT id FROM users WHERE email=$1', [req.user.sub]);
+  if (me.rowCount === 0) return res.status(401).json({ error: 'USER_NOT_FOUND' });
+  const uid = me.rows[0].id;
 
   const rs = await query(`
-    SELECT c.id, c.title,
-           COUNT(m.id)::int AS total,
-           COALESCE(SUM(CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END),0)::int AS done
+    SELECT c.id, c.title, c.price_cents, e.created_at AS enrolled_at
     FROM enrollments e
-    JOIN courses c ON c.id = e.course_id
-    LEFT JOIN modules m ON m.course_id = c.id AND m.status='published'
-    LEFT JOIN progress p
-      ON p.course_id = c.id
-     AND p.module_no = m.module_no
-     AND p.user_id = $1
-    WHERE e.user_id = $1
-    GROUP BY c.id, c.title
-    ORDER BY c.id;
-  `, [userId]);
+    JOIN courses c ON c.id=e.course_id
+    WHERE e.user_id=$1
+    ORDER BY c.id
+  `, [uid]);
 
-  const list = rs.rows.map(r => ({
-    id: r.id,
-    title: r.title,
-    progress: r.total ? Math.round((r.done / r.total) * 100) : 0
-  }));
+  const courses = rs.rows;
 
-  res.json(list);
+  if (!includeModules) return res.json({ courses });
+
+  const ids = courses.map(c => c.id);
+  if (ids.length === 0) return res.json({ courses: [] });
+
+  const ms = await query(`
+    SELECT m.course_id, m.module_no, m.title, m.requires_quiz, m.status
+    FROM modules m
+    WHERE m.course_id = ANY($1::int[])
+    ORDER BY m.course_id, m.module_no
+  `, [ids]);
+  const byCourse = new Map();
+  for (const m of ms.rows) {
+    if (!byCourse.has(m.course_id)) byCourse.set(m.course_id, []);
+    byCourse.get(m.course_id).push(m);
+  }
+
+  for (const c of courses) c.modules = byCourse.get(c.id) || [];
+  res.json({ courses });
 });
 
-router.get('/:id', async (req, res) => {
-  const courseId = Number(req.params.id);
-  const email = req.user?.sub;
-  const u = await query('SELECT id FROM users WHERE email=$1', [email]);
-  if (u.rowCount === 0) return res.status(401).json({ error: 'User not found' });
-  const userId = u.rows[0].id;
+/**
+ * POST /courses/:courseId/enroll
+ * Ręczne przypisanie dostępu (np. kurs darmowy / admin nadaje dostęp).
+ */
+router.post('/:courseId/enroll', async (req, res) => {
+  const pschema = z.object({ courseId: z.coerce.number().int().positive() });
+  const p = pschema.safeParse(req.params);
+  if (!p.success) return res.status(400).json({ error: 'INVALID_INPUT' });
+  const courseId = p.data.courseId;
 
-  const enr = await query('SELECT 1 FROM enrollments WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
-  if (enr.rowCount === 0) return res.status(403).json({ error: 'NOT_ENROLLED' });
+  const me = await query('SELECT id FROM users WHERE email=$1', [req.user.sub]);
+  if (me.rowCount === 0) return res.status(401).json({ error: 'USER_NOT_FOUND' });
+  const uid = me.rows[0].id;
 
-  const c = await query('SELECT id, title FROM courses WHERE id=$1', [courseId]);
-  if (c.rowCount === 0) return res.status(404).json({ error: 'Course not found' });
-  const course = c.rows[0];
+  const c = await query('SELECT id FROM courses WHERE id=$1', [courseId]);
+  if (c.rowCount === 0) return res.status(404).json({ error: 'COURSE_NOT_FOUND' });
 
-  const m = await query(`
-    SELECT module_no, title, requires_quiz
-    FROM modules
-    WHERE course_id=$1 AND status='published'
-    ORDER BY module_no
-  `, [courseId]);
-  const completed = await query('SELECT module_no FROM progress WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
+  await query('INSERT INTO enrollments (user_id, course_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [uid, courseId]);
+  await logAudit({ userId: uid, action: 'ENROLL_CREATE', entity: 'course', entityId: courseId });
 
-  const completedSet = new Set(completed.rows.map(r => Number(r.module_no)));
-  const completedCount = completedSet.size;
-  const total = m.rowCount;
-  const percent = total ? Math.round((completedCount / total) * 100) : 0;
-
-  const modules = m.rows.map(row => ({
-    id: Number(row.module_no),
-    title: row.title + (row.requires_quiz ? ' 📝' : ''),
-    completed: completedSet.has(Number(row.module_no)),
-    locked: Number(row.module_no) > completedCount + 1
-  }));
-
-  res.json({ id: course.id, title: course.title, percent, modules });
+  res.json({ ok: true });
 });
 
 export default router;
