@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Kursy – Centrum Szkoleniowe</title>
+  <link rel="stylesheet" href="public/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="logo">Centrum Szkoleniowe</a>
+    <nav>
+      <a href="panel.html">Moje kursy</a>
+      <a href="logowanie.html" onclick="localStorage.removeItem('token')">Wyloguj</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Dostępne kursy</h1>
+    <div id="catalog" class="course-grid">Ładowanie kursów...</div>
+
+    <h2 class="mt-40">Twoje kursy</h2>
+    <div id="my-courses" class="course-grid">Ładowanie...</div>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2025 Centrum Szkoleniowe</p>
+  </footer>
+
+  <script type="module">
+    import { apiFetch } from './js/api.js';
+    import { initShop } from './js/shop.js';
+    import { showToast } from './js/ui.js';
+
+    async function loadCatalog() {
+      try {
+        const data = await apiFetch('/catalog');
+        const el = document.getElementById('catalog');
+        el.innerHTML = '';
+        data.courses.forEach(c => {
+          const card = document.createElement('div');
+          card.className = 'course-card';
+          card.innerHTML = `
+            <h3>${c.title}</h3>
+            <p>${c.description || ''}</p>
+            <p class="price">${(c.price_cents/100).toFixed(2)} zł</p>
+            <button class="btn-primary" data-buy-course="${c.id}">Kup kurs</button>
+          `;
+          el.appendChild(card);
+        });
+        initShop(); // aktywuj przyciski
+      } catch (e) {
+        console.error(e);
+        document.getElementById('catalog').innerText = 'Nie udało się pobrać kursów';
+      }
+    }
+
+    async function loadMyCourses() {
+      try {
+        const data = await apiFetch('/courses');
+        const el = document.getElementById('my-courses');
+        el.innerHTML = '';
+        if (data.courses.length === 0) {
+          el.innerHTML = '<p>Nie masz jeszcze żadnych kursów.</p>';
+          return;
+        }
+        data.courses.forEach(c => {
+          const card = document.createElement('div');
+          card.className = 'course-card owned';
+          card.innerHTML = `
+            <h3>${c.title}</h3>
+            <p>${c.description || ''}</p>
+            <button class="btn-secondary" onclick="window.location.href='kurs.html?id=${c.id}'">Przejdź do kursu</button>
+          `;
+          el.appendChild(card);
+        });
+      } catch (e) {
+        console.error(e);
+        document.getElementById('my-courses').innerText = 'Błąd ładowania kursów';
+      }
+    }
+
+    loadCatalog();
+    loadMyCourses();
+  </script>
+</body>
+</html>

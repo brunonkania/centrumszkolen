@@ -2,11 +2,15 @@
   "name": "centrumszkolen-server",
   "version": "2.0.0",
   "type": "module",
-  "main": "src/app.js",
+  "main": "src/index.js",
   "scripts": {
-    "dev": "node --watch src/app.js",
-    "start": "node src/app.js",
+    "db:create": "node src/db-create.js",
     "db:migrate": "node src/migrate.js",
+    "db:patch": "node src/patch.js",
+    "db:seed": "node src/seed.js",
+    "db:check": "node src/db-check.js",
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
     "lint": "node -v"
   },
   "dependencies": {

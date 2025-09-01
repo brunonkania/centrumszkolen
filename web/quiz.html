@@ -1,36 +1,31 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Quiz – Centrum Szkoleń</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="public/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <a class="logo" href="./index.html">Centrum Szkoleń</a>
-    <nav class="actions">
-      <a class="btn ghost" id="backToModule" href="#">Powrót do modułu</a>
-      <button id="logoutBtn" class="btn">Wyloguj</button>
+  <header class="site-header">
+    <a href="index.html" class="logo">Centrum Szkoleń</a>
+    <nav>
+      <a href="kursy.html">Sklep</a>
+      <a href="panel.html">Moje kursy</a>
+      <a href="#" class="btn-secondary" data-logout>Wyloguj</a>
     </nav>
   </header>
 
   <main class="container">
-    <section class="hero">
-      <h1>Quiz</h1>
-      <p id="hint" class="muted"></p>
-    </section>
-
-    <section class="content">
-      <form id="quizForm" class="form"></form>
-      <div class="navbar">
-        <button id="submitBtn" class="btn">Sprawdź</button>
-      </div>
-      <p id="msg" class="muted"></p>
-    </section>
+    <h1 id="h1">Quiz</h1>
+    <form id="form" class="quiz-form">Ładowanie…</form>
+    <div class="mt-20">
+      <a class="btn-secondary" id="back">← Wróć do kursu</a>
+    </div>
   </main>
 
-  <script type="module" src="./js/quiz.js"></script>
-  <script defer src="./app.js"></script>
+  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+
+  <script type="module" src="./js/quiz.js?v=1"></script>
+  <script type="module" src="./js/boot.js"></script>
 </body>
 </html>

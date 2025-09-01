@@ -1,83 +1,82 @@
-import { api } from './js/api.js';
-import { requireAuthOrRedirect } from './js/auth.js';
+// web/js/quiz.js
+import { apiFetch } from './api.js';
+import { showToast } from './ui.js';
 
-await requireAuthOrRedirect();
+const params = new URLSearchParams(location.search);
+const courseId = Number(params.get('course') || 0);
+const moduleNo = Number(params.get('module') || 0);
 
-const sp = new URLSearchParams(location.search);
-const courseId = Number(sp.get('course') || 1);
-const moduleNo = Number(sp.get('no') || 1);
+const h1 = document.getElementById('h1');
+const form = document.getElementById('form');
+const back = document.getElementById('back');
+back.href = `kurs.html?id=${courseId}`;
 
-const hint = document.getElementById('hint');
-const form = document.getElementById('quizForm');
-const msg = document.getElementById('msg');
-const back = document.getElementById('backToModule');
-back.href = `./module.html?course=${courseId}&no=${moduleNo}`;
-
-function renderQuestion(q, idx) {
-  if (q.type === 'tf') {
-    return `
-      <fieldset>
-        <legend>${idx+1}. ${q.q}</legend>
-        <label><input type="radio" name="q${idx}" value="true" required> Prawda</label><br>
-        <label><input type="radio" name="q${idx}" value="false" required> Fałsz</label>
-      </fieldset>
-    `;
-  }
-  const opts = q.options || [];
-  if (q.type === 'multi') {
-    return `
-      <fieldset>
-        <legend>${idx+1}. ${q.q} (wiele odpowiedzi)</legend>
-        ${opts.map((opt, i) => `<label><input type="checkbox" name="q${idx}" value="${i}"> ${opt}</label>`).join('<br>')}
-      </fieldset>
-    `;
-  }
-  // single
-  return `
-    <fieldset>
-      <legend>${idx+1}. ${q.q}</legend>
-      ${opts.map((opt, i) => `<label><input type="radio" name="q${idx}" value="${i}" required> ${opt}</label>`).join('<br>')}
-    </fieldset>
-  `;
-}
+let quiz = [];
 
 async function load() {
-  msg.textContent = '';
+  if (!courseId || !moduleNo) {
+    form.textContent = 'Błędny adres.';
+    return;
+  }
   try {
-    const data = await api(`/quiz/${courseId}/${moduleNo}`);
-    hint.textContent = `Próg: ${data.passScore}% • Pozostało prób: ${data.left}/${data.attemptLimit}`;
-    const qs = (data.quiz.questions || []);
-    form.innerHTML = qs.map((q, idx) => renderQuestion(q, idx)).join('');
+    const r = await apiFetch(`/quiz/${courseId}/${moduleNo}`);
+    quiz = r.quiz || [];
+    h1.textContent = `Quiz – Moduł ${moduleNo} (min. ${r.pass_score}%)`;
+    form.innerHTML = '';
+
+    quiz.forEach((q, i) => {
+      const block = document.createElement('div');
+      block.className = 'question-block';
+      block.innerHTML = `<div class="question"><strong>Pytanie ${i+1}:</strong> ${q.question}</div>`;
+      const opts = document.createElement('div');
+      opts.className = 'options';
+      (q.options || []).forEach((opt, j) => {
+        const id = `q${i}o${j}`;
+        const line = document.createElement('label');
+        line.className = 'option';
+        line.innerHTML = `
+          <input type="radio" name="q${i}" value="${j}" id="${id}"/>
+          <span>${opt}</span>
+        `;
+        opts.appendChild(line);
+      });
+      block.appendChild(opts);
+      form.appendChild(block);
+    });
+
+    const submit = document.createElement('button');
+    submit.className = 'btn-primary mt-20';
+    submit.type = 'submit';
+    submit.textContent = 'Wyślij odpowiedzi';
+    form.appendChild(submit);
   } catch (e) {
-    msg.textContent = e.message || 'Błąd wczytywania quizu.';
+    console.error(e);
+    form.textContent = 'Nie udało się wczytać quizu.';
   }
 }
 
-document.getElementById('submitBtn').addEventListener('click', async (e)=>{
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const answers = [];
-  form.querySelectorAll('fieldset').forEach((fs, idx)=>{
-    const radios = Array.from(fs.querySelectorAll('input[type="radio"]'));
-    const checks = Array.from(fs.querySelectorAll('input[type="checkbox"]'));
-    if (checks.length) {
-      const arr = checks.filter(c => c.checked).map(c => Number(c.value));
-      answers[idx] = arr;
-    } else if (radios.length) {
-      const sel = radios.find(r => r.checked);
-      answers[idx] = sel ? (sel.value === 'true' ? [1] : sel.value === 'false' ? [0] : Number(sel.value)) : null;
-    }
+  const answers = quiz.map((_, i) => {
+    const picked = form.querySelector(`input[name="q${i}"]:checked`);
+    return picked ? Number(picked.value) : -1;
   });
-  msg.textContent = 'Sprawdzanie...';
   try {
-    const res = await api(`/quiz/${courseId}/${moduleNo}/submit`, { method:'POST', body:{ answers } });
-    if (res.passed) {
-      msg.textContent = `Zaliczono ✅ (${res.score}%)`;
-      setTimeout(()=> location.replace(`./module.html?course=${courseId}&no=${moduleNo}`), 800);
+    const r = await apiFetch(`/quiz/${courseId}/${moduleNo}`, {
+      method: 'POST',
+      body: JSON.stringify({ answers })
+    });
+    const { score, passed, attempt } = r.result;
+    showToast(`Wynik: ${score}% (${passed ? 'zaliczono' : 'niezaliczono'})`);
+    // Jeżeli zaliczone – przenieś do modułu i pozwól zakończyć
+    if (passed) {
+      window.location.href = `module.html?course=${courseId}&module=${moduleNo}`;
     } else {
-      msg.textContent = `Nie zaliczono ❌ (${res.score}%, wymagane ${res.required}%)`;
+      // odśwież quiz (kolejna próba)
+      load();
     }
-  } catch (e) {
-    msg.textContent = e.message || 'Błąd wysyłki.';
+  } catch (e2) {
+    showToast('Błąd wysyłania odpowiedzi (limit prób?)');
   }
 });
 

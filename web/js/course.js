@@ -1,60 +1,66 @@
-import { api } from './js/api.js';
-import { requireAuthOrRedirect, logout } from './js/auth.js';
-
-await requireAuthOrRedirect();
+// web/js/course.js
+import { apiFetch } from './api.js';
+import { showToast } from './ui.js';
 
 const params = new URLSearchParams(location.search);
-const courseId = Number(params.get('id') || 1);
+const courseId = Number(params.get('id') || 0);
+const titleEl = document.getElementById('title');
+const listEl = document.getElementById('mods');
 
-const titleEl = document.getElementById('courseTitle');
-const barEl = document.getElementById('progressBar');
-const textEl = document.getElementById('progressText');
-const modulesEl = document.getElementById('modules');
-const msgEl = document.getElementById('msg');
-const certBtn = document.getElementById('certBtn');
+async function load() {
+  if (!courseId) {
+    titleEl.textContent = 'Brak ID kursu';
+    return;
+  }
+  titleEl.textContent = `Kurs #${courseId}`;
 
-document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-  await api('/auth/logout', { method:'POST' });
-  logout();
-  location.replace('./index.html');
-});
-
-async function loadCourse() {
-  msgEl.textContent = '';
   try {
-    const view = await api(`/courses/${courseId}`);
-    renderCourse(view);
+    const [mods, prog] = await Promise.all([
+      apiFetch(`/modules/${courseId}`),
+      apiFetch(`/progress/${courseId}`)
+    ]);
+    const done = new Set((prog.completed || []));
+
+    listEl.innerHTML = '';
+    (mods.modules || []).forEach(m => {
+      const isDone = done.has(m.module_no);
+      const locked = m.module_no !== 1 && !done.has(m.module_no - 1);
+
+      const row = document.createElement('div');
+      row.className = `module-item ${locked ? 'locked' : ''}`;
+      row.innerHTML = `
+        <div class="module-main">
+          <div>
+            <div class="module-no">Moduł ${m.module_no}</div>
+            <div class="module-title">${m.title}</div>
+          </div>
+          <div class="module-actions">
+            ${isDone ? '<span class="badge success">Ukończony</span>' : ''}
+            ${m.requires_quiz ? '<span class="badge">Quiz</span>' : ''}
+            <button class="btn-primary" data-open>Otwórz</button>
+          </div>
+        </div>
+      `;
+
+      row.querySelector('[data-open]').addEventListener('click', () => {
+        if (locked) {
+          showToast('Najpierw ukończ poprzedni moduł');
+          return;
+        }
+        if (m.requires_quiz) {
+          // otwórz quiz jako pierwsze zadanie
+          window.location.href = `quiz.html?course=${courseId}&module=${m.module_no}`;
+        } else {
+          window.location.href = `module.html?course=${courseId}&module=${m.module_no}`;
+        }
+      });
+
+      listEl.appendChild(row);
+    });
   } catch (e) {
-    if (String(e.message || '').includes('NOT_ENROLLED')) {
-      msgEl.innerHTML = 'Nie masz jeszcze dostępu do tego kursu. Przejdź do <a href="./sklep.html">sklepu</a>.';
-    } else {
-      msgEl.textContent = e.message || 'Nie udało się wczytać kursu.';
-    }
+    console.error(e);
+    listEl.textContent = 'Nie udało się wczytać modułów (zaloguj się?).';
   }
 }
 
-function renderCourse(view) {
-  titleEl.textContent = view.title;
-  barEl.style.width = `${view.percent}%`;
-  textEl.textContent = `Postęp: ${view.percent}%`;
-  certBtn.style.display = view.percent === 100 ? 'inline-block' : 'none';
-  certBtn.href = `http://localhost:3001/certificates/${courseId}.pdf`;
-
-  modulesEl.innerHTML = view.modules.map(m => {
-    const locked = m.locked ? 'locked' : '';
-    const done = m.completed ? 'done' : '';
-    const disabled = m.locked ? 'disabled' : '';
-    const label = m.locked ? 'Zablokowany' : (m.completed ? 'Zaliczone' : 'Otwórz');
-    const href = m.locked ? '#' : `./module.html?course=${courseId}&no=${m.id}`;
-    return `
-      <a class="card ${locked} ${done}" href="${href}" ${disabled && 'tabindex="-1"'}>
-        <h3>${m.id}. ${m.title}</h3>
-        <div class="row">
-          <button class="btn" ${disabled}>${label}</button>
-        </div>
-      </a>
-    `;
-  }).join('');
-}
-
-loadCourse();
+load();

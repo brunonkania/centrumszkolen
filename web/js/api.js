@@ -1,55 +1,39 @@
-const API = window.__API__ || 'http://localhost:3001';
+// web/js/api.js
+const API_URL = 'http://localhost:3000';
 
-function getCookie(name) {
-  const v = document.cookie.split('; ').find(row => row.startsWith(name + '='));
-  return v ? decodeURIComponent(v.split('=')[1]) : '';
+async function getCsrf() {
+  const r = await fetch(`${API_URL}/csrf`, { credentials: 'include' });
+  return r.ok ? (await r.json()).csrf : null;
 }
 
-export async function api(path, { method = 'GET', body } = {}) {
-  const isUnsafe = /^(POST|PUT|PATCH|DELETE)$/i.test(method || 'GET');
-
-  const headers = {};
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (isUnsafe) headers['x-csrf-token'] = getCookie('csrf');
-
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers,
+// surowy ping bez CSRF (np. /health)
+export async function _raw(path, init) {
+  const res = await fetch(`${API_URL}${path}`, {
     credentials: 'include',
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...(init || {}),
   });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? res.json() : null;
+}
 
-  let data = null;
-  try { data = await res.json(); } catch {}
-
+export async function apiFetch(path, options = {}) {
+  const csrf = await getCsrf().catch(() => null);
+  const res = await fetch(`${API_URL}${path}`, {
+    method: options.method || 'GET',
+    body: options.body,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(csrf ? { 'x-csrf-token': csrf } : {}),
+      ...(options.headers || {}),
+    },
+  });
   if (!res.ok) {
-    const err = new Error(
-      (data && (data.message || data.error)) ||
-      `HTTP ${res.status}`
-    );
-    if (data && data.error) err.code = data.error;
-    err.status = res.status;
-    throw err;
+    let msg = `HTTP ${res.status}`;
+    try { const err = await res.json(); msg = err.message || err.error || msg; } catch {}
+    throw new Error(msg);
   }
-
-  return data === null ? {} : data;
-}
-
-export async function health() {
-  return api('/health');
-}
-
-export function currentUser() {
-  try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
-}
-
-export async function requireAuthOrRedirect() {
-  try {
-    const { user } = await api('/auth/me');
-    localStorage.setItem('user', JSON.stringify(user));
-    return user;
-  } catch (e) {
-    location.replace('./logowanie.html');
-    return null;
-  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? res.json() : null;
 }

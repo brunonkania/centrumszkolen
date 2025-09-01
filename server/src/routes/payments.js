@@ -1,103 +1,138 @@
+// src/routes/payments.js
 import { Router } from 'express';
 import { z } from 'zod';
 import { query, tx } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { logAudit } from '../middleware/audit.js';
 
 const router = Router();
+router.use(requireAuth);
 
-const PAYMENTS_ENABLED = String(process.env.PAYMENTS_ENABLED || 'false') === 'true';
-const PROVIDER = (process.env.PAYMENTS_PROVIDER || 'P24').toUpperCase();
-const FRONT_URL = process.env.FRONT_URL || 'http://localhost:5173';
+/**
+ * POST /payments/create
+ * body: { course_id: number }
+ * Tworzy zamówienie (pending). Dla kursów za 0 zł -> od razu płatne i enrollment.
+ */
+router.post('/create', async (req, res, next) => {
+  try {
+    const bs = z.object({ course_id: z.coerce.number().int().positive() }).safeParse(req.body || {});
+    if (!bs.success) return res.status(400).json({ error: 'INVALID_INPUT' });
 
-function ensureEnabled() {
-  if (!PAYMENTS_ENABLED) {
-    const err = new Error('PAYMENTS_DISABLED');
-    err.code = 'PAYMENTS_DISABLED';
-    err.status = 503;
-    throw err;
+    const uid = req.user?.uid || req.user?.id;
+    const courseId = bs.data.course_id;
+
+    const c = await query('SELECT id, price_cents, title FROM courses WHERE id=$1', [courseId]);
+    if (c.rowCount === 0) return res.status(404).json({ error: 'COURSE_NOT_FOUND' });
+
+    const price = c.rows[0].price_cents ?? 0;
+
+    const order = await tx(async (client) => {
+      // jeśli istnieje paid enrollment, nie rób nowego zamówienia
+      const enr = await client.query(
+        'SELECT 1 FROM enrollments WHERE user_id=$1 AND course_id=$2',
+        [uid, courseId]
+      );
+      if (enr.rowCount > 0) {
+        // zwróć pseudo-order paid
+        return {
+          id: 0,
+          status: 'paid',
+          course_id: courseId,
+          amount_cents: 0,
+        };
+      }
+
+      // utwórz zamówienie
+      const r = await client.query(
+        `INSERT INTO orders (user_id, course_id, amount_cents, status, provider)
+         VALUES ($1,$2,$3,$4,$5)
+         RETURNING id, user_id, course_id, amount_cents, status`,
+        [uid, courseId, price, 'pending', 'dev']
+      );
+      const ord = r.rows[0];
+
+      // jeżeli kurs jest darmowy, od razu „opłać” i dodaj enrollment
+      if (price === 0) {
+        await client.query(
+          `UPDATE orders SET status='paid', paid_at=now() WHERE id=$1`,
+          [ord.id]
+        );
+        await client.query(
+          `INSERT INTO enrollments (user_id, course_id)
+           VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+          [uid, courseId]
+        );
+        ord.status = 'paid';
+      }
+
+      return ord;
+    });
+
+    return res.json({
+      ok: true,
+      order: { id: order.id, course_id: courseId, amount_cents: order.amount_cents, status: order.status },
+    });
+  } catch (e) {
+    next(e);
   }
-}
+});
 
-// POST /payments/create
-router.post('/create', requireAuth, async (req, res) => {
-  const bschema = z.object({ courseId: z.coerce.number().int().positive() });
-  const b = bschema.safeParse(req.body || {});
-  if (!b.success) return res.status(400).json({ error: 'INVALID_INPUT' });
-  const courseId = b.data.courseId;
+/**
+ * GET /payments/order/:orderId
+ * Zwraca stan zamówienia użytkownika (autoryzacja właściciela).
+ */
+router.get('/order/:orderId', async (req, res) => {
+  const ps = z.object({ orderId: z.coerce.number().int().positive() }).safeParse(req.params);
+  if (!ps.success) return res.status(400).json({ error: 'INVALID_INPUT' });
 
-  const me = await query('SELECT id FROM users WHERE email=$1', [req.user.sub]);
-  if (me.rowCount === 0) return res.status(401).json({ error: 'USER_NOT_FOUND' });
-  const userId = me.rows[0].id;
+  const uid = req.user?.uid || req.user?.id;
+  const id = ps.data.orderId;
 
-  const c = await query('SELECT id, title, price_cents FROM courses WHERE id=$1', [courseId]);
-  if (c.rowCount === 0) return res.status(404).json({ error: 'COURSE_NOT_FOUND' });
-  const course = c.rows[0];
-
-  const enr = await query('SELECT 1 FROM enrollments WHERE user_id=$1 AND course_id=$2', [userId, courseId]);
-  if (enr.rowCount > 0) return res.status(409).json({ error: 'ALREADY_ENROLLED' });
-
-  const ins = await query(
-    `INSERT INTO orders (user_id, course_id, amount_cents, currency, status, provider, provider_order_id)
-     VALUES ($1,$2,$3,'PLN','pending',$4,NULL) RETURNING id`,
-    [userId, courseId, course.price_cents, PROVIDER]
+  const r = await query(
+    `SELECT id, user_id, course_id, amount_cents, status, paid_at
+     FROM orders WHERE id=$1`,
+    [id]
   );
-  const orderId = ins.rows[0].id;
+  if (r.rowCount === 0) return res.status(404).json({ error: 'ORDER_NOT_FOUND' });
+  const o = r.rows[0];
+  if (o.user_id !== (uid | 0)) return res.status(403).json({ error: 'FORBIDDEN' });
 
-  await logAudit({ userId, action: 'PAYMENT_ORDER_CREATE', entity: 'order', entityId: orderId, meta: { provider: PROVIDER, courseId } });
-
-  if (!PAYMENTS_ENABLED) {
-    return res.status(503).json({
-      error: 'PAYMENTS_DISABLED',
-      orderId,
-      message: 'Płatności chwilowo wyłączone. Zamówienie zapisane jako pending.'
-    });
-  }
-
-  // TODO: integrate with provider SDK/API here
-  const providerOrderId = `DEMO-${orderId}`;
-  const redirectUrl = `${FRONT_URL}/platnosc.html?order=${orderId}&redirected=1`;
-
-  await query('UPDATE orders SET provider_order_id=$1 WHERE id=$2', [providerOrderId, orderId]);
-  return res.json({ ok: true, orderId, provider: PROVIDER, redirectUrl });
+  res.json({ order: { id: o.id, course_id: o.course_id, amount_cents: o.amount_cents, status: o.status, paid_at: o.paid_at } });
 });
 
-// GET /payments/return
-router.get('/return', async (req, res) => {
-  const qschema = z.object({ order: z.string().optional() });
-  const q = qschema.safeParse(req.query || {});
-  const orderId = q.success ? q.data.order : '';
-  return res.redirect(`${FRONT_URL}/platnosc.html?order=${encodeURIComponent(orderId || '')}`);
-});
+/**
+ * POST /payments/:orderId/simulate-success
+ * Oznacza płatność jako „paid” i dodaje enrollment.
+ */
+router.post('/:orderId/simulate-success', async (req, res, next) => {
+  try {
+    const ps = z.object({ orderId: z.coerce.number().int().positive() }).safeParse(req.params);
+    if (!ps.success) return res.status(400).json({ error: 'INVALID_INPUT' });
 
-// POST /payments/notify
-router.post('/notify', async (req, res) => {
-  // W realu: weryfikacja podpisu webhooka
-  const bschema = z.object({
-    provider_order_id: z.string().min(1),
-    status: z.enum(['PAID', 'SUCCESS', 'FAILED', 'CANCELED']).or(z.string())
-  });
-  const b = bschema.safeParse(req.body || {});
-  if (!b.success) return res.status(400).json({ error: 'INVALID_INPUT' });
+    const uid = req.user?.uid || req.user?.id;
+    const id = ps.data.orderId;
 
-  const { provider_order_id, status } = b.data;
-
-  const ord = await query('SELECT id, user_id, course_id, status FROM orders WHERE provider_order_id=$1', [provider_order_id]);
-  if (ord.rowCount === 0) return res.status(404).json({ error: 'ORDER_NOT_FOUND' });
-  const order = ord.rows[0];
-
-  if (status === 'PAID' || status === 'SUCCESS') {
     await tx(async (client) => {
-      await client.query('UPDATE orders SET status=$1, paid_at=now(), notify_payload=$2 WHERE id=$3', ['paid', JSON.stringify(req.body || {}), order.id]);
-      await client.query('INSERT INTO enrollments (user_id, course_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [order.user_id, order.course_id]);
-    });
-    await logAudit({ userId: order.user_id, action: 'PAYMENT_PAID', entity: 'order', entityId: order.id });
-  } else {
-    await query('UPDATE orders SET status=$1, notify_payload=$2 WHERE id=$3', [String(status).toLowerCase(), JSON.stringify(req.body || {}), order.id]);
-    await logAudit({ userId: order.user_id, action: 'PAYMENT_STATUS', entity: 'order', entityId: order.id, meta: { status } });
-  }
+      const r = await client.query(
+        `SELECT id, user_id, course_id, status FROM orders WHERE id=$1 FOR UPDATE`,
+        [id]
+      );
+      if (r.rowCount === 0) throw Object.assign(new Error('ORDER_NOT_FOUND'), { status: 404, code: 'ORDER_NOT_FOUND' });
+      const o = r.rows[0];
+      if (o.user_id !== (uid | 0)) throw Object.assign(new Error('FORBIDDEN'), { status: 403, code: 'FORBIDDEN' });
+      if (o.status === 'paid') return;
 
-  res.json({ ok: true });
+      await client.query(`UPDATE orders SET status='paid', paid_at=now() WHERE id=$1`, [id]);
+      await client.query(
+        `INSERT INTO enrollments (user_id, course_id)
+         VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+        [uid, o.course_id]
+      );
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
 });
 
 export default router;

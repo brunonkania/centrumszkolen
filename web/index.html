@@ -1,57 +1,34 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Centrum Szkoleń</title>
-  <meta name="description" content="Kursy online i szkolenia." />
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
-  <meta name="robots" content="index,follow">
+  <link rel="stylesheet" href="public/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <a class="logo" href="./index.html">Centrum Szkoleń</a>
-    <nav class="actions">
-      <a class="btn ghost" href="./panel.html">Moje kursy</a>
-      <a class="btn ghost" href="./sklep.html">Sklep</a>
-      <a class="btn ghost" href="./regulamin.html">Regulamin</a>
-      <a class="btn ghost" href="./polityka.html">Polityka</a>
-      <button id="logoutBtn" class="btn">Wyloguj</button>
+  <header class="site-header">
+    <a href="index.html" class="logo">Centrum Szkoleń</a>
+    <nav>
+      <a href="panel.html">Moje kursy</a>
+      <a href="kursy.html">Sklep</a>
+      <a href="regulamin.html">Regulamin</a>
+      <a href="polityka.html">Polityka</a>
+      <a href="logowanie.html" class="btn-secondary">Wyloguj</a>
     </nav>
   </header>
 
   <main class="container">
-    <section class="hero">
-      <h1>Witaj w Centrum Szkoleń</h1>
-      <p id="status">Łączenie z API…</p>
-      <div class="grid">
-        <a class="card" href="./panel.html">
-          <h3>Panel kursanta</h3>
-          <p>Sprawdź dostępne kursy i postęp.</p>
-        </a>
-        <a class="card" href="./sklep.html">
-          <h3>Sklep</h3>
-          <p>Kup dostęp do kursów.</p>
-        </a>
-      </div>
-    </section>
+    <h1>Witaj w Centrum Szkoleń</h1>
+    <p id="api-status">Łączenie z API...</p>
+
+    <div class="card-grid">
+      <div class="card"><h3>Panel kursanta</h3><p>Sprawdź dostępne kursy i postęp.</p></div>
+      <div class="card"><h3>Sklep</h3><p>Kup dostęp do kursów.</p></div>
+    </div>
   </main>
 
-  <footer class="footer">
-    <small>© 2025 Centrum Szkoleń</small>
-  </footer>
+  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
 
-  <div id="cookieBanner" class="cookie-banner" style="display:none;">
-    <span>Używamy cookies dla poprawnego działania serwisu.</span>
-    <div>
-      <a class="btn ghost" href="./cookies.html">Więcej</a>
-      <button id="cookieAccept" class="btn">OK</button>
-    </div>
-  </div>
-
-  <div id="toast" class="toast"></div>
-
-  <script defer src="./app.js"></script>
+  <script type="module" src="./js/home.js?v=1"></script>
 </body>
 </html>

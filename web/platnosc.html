@@ -1,36 +1,83 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Status płatności</title>
-  <link rel="stylesheet" href="./style.css" />
+  <meta charset="UTF-8" />
+  <title>Płatność – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="public/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <a class="logo" href="./index.html">Centrum Szkoleń</a>
-    <nav class="topnav">
-      <a href="./panel.html">Moje kursy</a>
-      <button id="logoutBtn" class="btn btn-secondary">Wyloguj</button>
+  <header class="site-header">
+    <a href="index.html" class="logo">Centrum Szkoleń</a>
+    <nav>
+      <a href="kursy.html">Sklep</a>
+      <a href="panel.html">Moje kursy</a>
+      <a href="#" class="btn-secondary" data-logout>Wyloguj</a>
     </nav>
   </header>
 
   <main class="container">
-    <section class="card" style="max-width:560px;margin:40px auto;">
-      <h2>Status płatności</h2>
-      <p class="muted">Jeśli płatność się powiodła, dostęp pojawi się w „Moje kursy”.</p>
-      <a class="btn" href="./panel.html">Przejdź do panelu</a>
-      <p id="msg" class="muted" style="min-height:1.4em;"></p>
-    </section>
+    <h1>Płatność</h1>
+    <div class="card" id="view">Ładowanie…</div>
   </main>
 
-  <script>
+  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+
+  <script type="module">
+    import { apiFetch } from './js/api.js';
+    import { showToast } from './js/ui.js';
+    import './js/boot.js';
+
     const params = new URLSearchParams(location.search);
-    const orderId = params.get('order');
-    if (orderId) {
-      document.getElementById('msg').textContent = `ID zamówienia: ${orderId}`;
+    const orderId = Number(params.get('order'));
+    const courseId = Number(params.get('course'));
+    const view = document.getElementById('view');
+
+    if (!orderId) {
+      view.textContent = 'Brak numeru zamówienia.';
+    } else {
+      render();
+    }
+
+    async function fetchOrder() {
+      const r = await apiFetch(`/payments/order/${orderId}`);
+      return r.order;
+    }
+
+    async function render() {
+      try {
+        const o = await fetchOrder();
+        if (o.status === 'paid') {
+          view.innerHTML = `
+            <p>Status: <span class="badge success">OPŁACONE</span></p>
+            <p><a class="btn-primary" href="kurs.html?id=${o.course_id}">Przejdź do kursu</a></p>
+            <p class="mt-20"><a href="panel.html">Przejdź do panelu</a></p>
+          `;
+          return;
+        }
+        view.innerHTML = `
+          <p>Numer zamówienia: <strong>#${o.id}</strong></p>
+          <p>Kwota: <strong>${(o.amount_cents/100).toFixed(2)} zł</strong></p>
+          <p>Status: <span class="badge">OCZEKUJĄCE</span></p>
+          <div class="mt-20">
+            <button id="pay" class="btn-primary">Symuluj płatność (dev)</button>
+            <button id="refresh" class="btn-secondary">Odśwież</button>
+          </div>
+        `;
+        document.getElementById('pay').onclick = async () => {
+          try {
+            await apiFetch(`/payments/${orderId}/simulate-success`, { method: 'POST' });
+            showToast('Płatność przyjęta ✅');
+            render();
+          } catch {
+            showToast('Błąd podczas potwierdzania płatności');
+          }
+        };
+        document.getElementById('refresh').onclick = render;
+      } catch (e) {
+        console.error(e);
+        view.textContent = 'Nie udało się pobrać zamówienia.';
+      }
     }
   </script>
-  <script type="module" src="./app.js"></script>
 </body>
 </html>

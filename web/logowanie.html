@@ -1,135 +1,45 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Logowanie – Centrum Szkoleń</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="public/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <a class="logo" href="./index.html">Centrum Szkoleń</a>
+  <header class="site-header">
+    <a href="index.html" class="logo">Centrum Szkoleniń</a>
+    <nav>
+      <a href="kursy.html">Sklep</a>
+      <a href="panel.html">Moje kursy</a>
+    </nav>
   </header>
 
   <main class="container">
-    <section class="card" style="max-width:520px;margin:40px auto;">
-      <h2>Zaloguj się</h2>
+    <h1>Zaloguj się</h1>
+    <form id="login-form" class="card" style="max-width:480px">
+      <label style="display:block;margin-bottom:10px">
+        E-mail
+        <input id="email" type="email" required placeholder="test@example.com" style="width:100%;padding:10px;margin-top:6px;border-radius:10px;border:1px solid #cbd5e1" />
+      </label>
+      <label style="display:block;margin-bottom:10px">
+        Hasło
+        <input id="password" type="password" required placeholder="••••••••" style="width:100%;padding:10px;margin-top:6px;border-radius:10px;border:1px solid #cbd5e1" />
+      </label>
+      <button class="btn-primary" type="submit">Zaloguj</button>
+      <span id="login-msg" style="margin-left:10px;color:#9b1c1c"></span>
+    </form>
 
-      <div class="grid-2">
-        <form id="loginForm" class="form">
-          <label>E-mail
-            <input id="email" type="email" required autocomplete="username" />
-          </label>
-          <label>Hasło
-            <input id="password" type="password" required autocomplete="current-password" />
-          </label>
-          <button class="btn" type="submit">Zaloguj</button>
-          <p id="loginMsg" class="muted" style="min-height:1.4em;"></p>
-          <div id="verifyBox" class="muted" style="display:none;">
-            <p>Adres e-mail niezweryfikowany.</p>
-            <p>
-              <button id="resendBtn" type="button" class="btn btn-secondary" style="margin-right:8px;">Wyślij ponownie link</button>
-              <a href="./verify.html">Mam token – potwierdź</a>
-            </p>
-            <p id="resendMsg" class="muted" style="min-height:1.4em;"></p>
-          </div>
-        </form>
-
-        <form id="registerForm" class="form">
-          <label>Imię i nazwisko
-            <input id="r_name" required />
-          </label>
-          <label>E-mail
-            <input id="r_email" type="email" required />
-          </label>
-          <label>Hasło
-            <input id="r_password" type="password" required minlength="6" />
-          </label>
-          <button class="btn" type="submit">Zarejestruj</button>
-          <p id="registerMsg" class="muted" style="min-height:1.4em;"></p>
-        </form>
-      </div>
-
-      <div class="muted" style="margin-top:8px;">
-        <a href="./verify.html">Potwierdź e-mail (mam token)</a> •
-        <a href="./reset.html">Reset hasła</a>
-      </div>
-    </section>
+    <p class="mt-20">
+      Konto testowe: <strong>test@example.com</strong> / <strong>Test123!</strong>
+    </p>
   </main>
 
+  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+
   <script type="module">
-    import { login, register, resendVerification } from './js/auth.js';
-
-    const emailField = document.getElementById('email');
-    const passwordField = document.getElementById('password');
-    const loginMsg = document.getElementById('loginMsg');
-    const verifyBox = document.getElementById('verifyBox');
-    const resendBtn = document.getElementById('resendBtn');
-    const resendMsg = document.getElementById('resendMsg');
-
-    // LOGOWANIE
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      loginMsg.textContent = 'Logowanie...';
-      verifyBox.style.display = 'none';
-      resendMsg.textContent = '';
-      try {
-        const email = emailField.value.trim();
-        const password = passwordField.value;
-        await login(email, password);
-        location.replace('./panel.html');
-      } catch (err) {
-        if (err && err.code === 'EMAIL_NOT_VERIFIED') {
-          loginMsg.textContent = '';
-          verifyBox.style.display = 'block';
-        } else if (err && err.code === 'INVALID_CREDENTIALS') {
-          loginMsg.textContent = 'Nieprawidłowy e-mail lub hasło.';
-        } else if (err && err.code === 'INVALID_INPUT') {
-          loginMsg.textContent = 'Uzupełnij poprawnie pola.';
-        } else {
-          loginMsg.textContent = err?.message || 'Błąd logowania';
-        }
-      }
-    });
-
-    // WYŚLIJ PONOWNIE LINK WERYFIKACYJNY
-    resendBtn.addEventListener('click', async () => {
-      resendMsg.textContent = 'Wysyłam...';
-      try {
-        const email = emailField.value.trim();
-        if (!email) {
-          resendMsg.textContent = 'Podaj e-mail w polu logowania.';
-          return;
-        }
-        await resendVerification(email);
-        resendMsg.textContent = 'Wysłano link. Sprawdź skrzynkę.';
-      } catch (e) {
-        resendMsg.textContent = e?.message || 'Nie udało się wysłać linku.';
-      }
-    });
-
-    // REJESTRACJA
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = document.getElementById('registerMsg');
-      msg.textContent = 'Rejestracja...';
-      try {
-        const name = document.getElementById('r_name').value.trim();
-        const email = document.getElementById('r_email').value.trim();
-        const password = document.getElementById('r_password').value;
-
-        await register(name, email, password);
-        msg.innerHTML = 'Konto utworzone ✅. Sprawdź e-mail i kliknij link weryfikacyjny. Potem zaloguj się.';
-      } catch (err) {
-        if (err && err.code === 'EMAIL_TAKEN') {
-          msg.textContent = 'Ten e-mail jest już zajęty.';
-        } else if (err && err.code === 'INVALID_INPUT') {
-          msg.textContent = 'Uzupełnij poprawnie wszystkie pola.';
-        } else {
-          msg.textContent = err?.message || 'Błąd rejestracji';
-        }
-      }
-    });
+    import { initLogin } from './js/auth.js';
+    import './js/boot.js';
+    initLogin({ successRedirect: 'kursy.html' });
   </script>
 </body>
 </html>

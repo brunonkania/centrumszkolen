@@ -1,47 +1,48 @@
-import { api } from './api.js';
+// web/js/auth.js
+import { apiFetch } from './api.js';
+import { showToast } from './ui.js';
 
-export async function login(email, password) {
-  try {
-    const { user } = await api('/auth/login', { method: 'POST', body: { email, password } });
-    localStorage.setItem('user', JSON.stringify(user));
-    return user;
-  } catch (e) {
-    throw e;
-  }
+/**
+ * Obsługa formularza logowania.
+ * options.successRedirect - ścieżka po sukcesie (np. 'kursy.html').
+ */
+export function initLogin(options = {}) {
+  const form = document.getElementById('login-form');
+  const msg = document.getElementById('login-msg');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (msg) msg.textContent = '';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+      await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      showToast('Zalogowano ✅');
+      window.location.href = options.successRedirect || 'index.html';
+    } catch {
+      if (msg) msg.textContent = 'Nieprawidłowy e-mail lub hasło';
+      showToast('Logowanie nieudane');
+    }
+  });
 }
 
-export async function register(name, email, password) {
-  const res = await api('/auth/register', { method: 'POST', body: { name, email, password } });
-  return res;
-}
-
-export async function resendVerification(email) {
-  await api('/auth/verify/resend', { method: 'POST', body: { email } });
-}
-
-export async function logout() {
-  try {
-    await api('/auth/logout', { method: 'POST' });
-  } finally {
-    localStorage.removeItem('user');
-  }
-}
-
-export async function refresh() {
-  try { await api('/auth/refresh', { method: 'POST' }); } catch {}
-}
-
-export function currentUser() {
-  try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
-}
-
-export async function requireAuthOrRedirect() {
-  try {
-    const { user } = await api('/auth/me');
-    localStorage.setItem('user', JSON.stringify(user));
-    return user;
-  } catch {
-    location.replace('./logowanie.html');
-    return null;
-  }
+/**
+ * Podpina kliknięcie „Wyloguj” dla elementu #logout-btn lub [data-logout].
+ */
+export function attachLogout() {
+  const el = document.querySelector('#logout-btn, [data-logout]');
+  if (!el) return;
+  el.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } catch {}
+    showToast('Wylogowano');
+    window.location.href = 'logowanie.html';
+  });
 }

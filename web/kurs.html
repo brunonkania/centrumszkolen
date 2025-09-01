@@ -1,36 +1,28 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kurs – Centrum Szkoleń</title>
-  <link rel="stylesheet" href="./style.css" />
+  <meta charset="UTF-8" />
+  <title>Karta kursu – Centrum Szkoleń</title>
+  <link rel="stylesheet" href="public/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <a class="logo" href="./index.html">Centrum Szkoleń</a>
-    <nav class="actions">
-      <a class="btn ghost" href="./panel.html">Panel</a>
-      <a class="btn ghost" href="./sklep.html">Sklep</a>
-      <button id="logoutBtn" class="btn">Wyloguj</button>
+  <header class="site-header">
+    <a href="index.html" class="logo">Centrum Szkoleń</a>
+    <nav>
+      <a href="kursy.html">Sklep</a>
+      <a href="panel.html">Moje kursy</a>
+      <a href="#" class="btn-secondary" data-logout>Wyloguj</a>
     </nav>
   </header>
 
   <main class="container">
-    <section class="hero">
-      <h1 id="courseTitle">Kurs</h1>
-      <div class="progress">
-        <div class="progress__bar" id="progressBar" style="width:0%"></div>
-      </div>
-      <p class="muted" id="progressText">Postęp: 0%</p>
-      <p><a id="certBtn" class="btn ghost" href="#" style="display:none;">Pobierz certyfikat</a></p>
-    </section>
-
-    <section id="modules" class="grid"></section>
-    <p id="msg" class="muted"></p>
+    <h1 id="title">Kurs</h1>
+    <div id="mods" class="module-list">Ładowanie…</div>
   </main>
 
-  <script type="module" src="./js/course.js"></script>
-  <script defer src="./app.js"></script>
+  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+
+  <script type="module" src="./js/course.js?v=1"></script>
+  <script type="module" src="./js/boot.js"></script>
 </body>
 </html>
