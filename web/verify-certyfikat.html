@@ -10,25 +10,58 @@
   <main class="container">
     <section class="hero">
       <h1>Weryfikacja certyfikatu</h1>
-      <p id="msg" class="muted"></p>
+      <p id="msg" class="muted">Podaj numer seryjny w parametrze <code>?serial=...</code> lub zeskanuj QR z certyfikatu.</p>
+      <div id="result" class="card" style="margin-top:16px; display:none;"></div>
     </section>
   </main>
+
+  <!-- globalne utilsy + API=/api -->
+  <script defer src="./app.js"></script>
+
   <script type="module">
-    const sp = new URLSearchParams(location.search);
-    const serial = sp.get('serial');
-    const API = 'http://localhost:3001';
-    const msg = document.getElementById('msg');
-    (async ()=>{
+    // Strona działa publicznie. API jest dostępne pod /api dzięki reverse-proxy w nginx.
+    const API = '/api';
+
+    function getParam(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name) || '';
+    }
+
+    async function verify(serial) {
+      const msg = document.getElementById('msg');
+      const box = document.getElementById('result');
+      msg.textContent = 'Sprawdzam certyfikat…';
+      box.style.display = 'none';
       try {
-        const res = await fetch(API + '/certificates/verify/' + encodeURIComponent(serial));
+        const res = await fetch(`${API}/certificates/verify/${encodeURIComponent(serial)}`, { credentials: 'include' });
         const data = await res.json();
-        if (data.valid) {
-          msg.innerHTML = 'Certyfikat ważny ✅<br>Serial: <b>'+data.serial+'</b><br>Kurs: '+data.course+'<br>Wystawiono: '+ new Date(data.issued_at).toLocaleString('pl-PL');
+        if (data && data.valid) {
+          const issued = data.issued_at ? new Date(data.issued_at).toLocaleString('pl-PL') : '-';
+          box.innerHTML = `
+            <h3 style="margin-top:0">Certyfikat ważny ✅</h3>
+            <p><b>Serial:</b> ${data.serial}</p>
+            <p><b>Kurs:</b> ${data.course_title || '-'}</p>
+            <p><b>Uczestnik:</b> ${data.user_name || '-'}</p>
+            <p><b>Wystawiono:</b> ${issued}</p>
+            ${data.pdf_url ? `<p><a class="btn" href="${data.pdf_url}" target="_blank" rel="noopener">Pobierz PDF</a></p>` : ''}
+          `;
+          msg.textContent = '';
+          box.style.display = '';
         } else {
-          msg.textContent = 'Nie znaleziono certyfikatu.';
+          msg.textContent = 'Nie znaleziono certyfikatu dla podanego numeru.';
         }
-      } catch(e) { msg.textContent = 'Błąd weryfikacji.'; }
-    })();
+      } catch (e) {
+        console.error(e);
+        msg.textContent = 'Błąd weryfikacji. Spróbuj ponownie później.';
+      }
+    }
+
+    const serial = getParam('serial');
+    if (serial) {
+      verify(serial);
+    } else {
+      document.getElementById('msg').textContent = 'Dodaj w adresie parametr ?serial=NUMER lub użyj linku z QR.';
+    }
   </script>
 </body>
 </html>

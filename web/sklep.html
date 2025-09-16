@@ -16,13 +16,24 @@
   </header>
 
   <main class="container">
-    <section class="hero">
+    <section class="section">
       <h1>Sklep</h1>
-      <p class="muted">Ten etap nie zawiera prawdziwych płatności.</p>
+      <p class="muted">Kupujesz bez zakładania konta. Po płatności wyślemy Ci unikalny link z dostępem do kursu.</p>
+
+      <div class="card" style="margin:16px 0;">
+        <form id="guestForm" class="row" onsubmit="return false;">
+          <label for="guestEmail" class="muted" style="margin-right:8px;">Twój e-mail:</label>
+          <input id="guestEmail" type="email" placeholder="np. jan.kowalski@example.com" required style="flex:1;min-width:260px;">
+          <button id="saveEmailBtn" class="btn" type="button">Użyj tego e-maila</button>
+        </form>
+        <p id="emailMsg" class="muted" style="margin-top:8px;"></p>
+      </div>
+
       <div class="grid" id="catalog">
         <div class="card skeleton" style="height:96px;"></div>
         <div class="card skeleton" style="height:96px;"></div>
       </div>
+
       <p id="msg" class="muted"></p>
     </section>
   </main>

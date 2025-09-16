@@ -19,7 +19,9 @@ import modulesRouter from './routes/modules.js';
 import progressRouter from './routes/progress.js';
 import quizRouter from './routes/quiz.js';
 import certificatesRouter from './routes/certificates.js';
-import paymentsRouter from './routes/payments.js'; // ⬅️ NOWOŚĆ
+import paymentsRouter from './routes/payments.js';
+import guestRouter from './routes/guest.js';
+import certificatesPublicRouter from './routes/certificates-public.js'; // ⬅️ NOWOŚĆ
 
 const app = express();
 
@@ -31,6 +33,9 @@ const allowed = new Set([
   process.env.FRONT_URL || 'http://localhost:5173',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  // jeśli serwujesz przez nginx:8080 i front wywołuje bez proxy, dodaj poniżej
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
 ]);
 
 app.use((req, res, next) => {
@@ -44,33 +49,21 @@ app.use((req, res, next) => {
     }
     return res.sendStatus(204);
   }
+  const origin = req.headers.origin;
+  if (origin && allowed.has(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   next();
 });
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      return cb(null, allowed.has(origin));
-    },
-    credentials: true,
-  })
-);
-
-/* ------------------------------ Middleware ------------------------------ */
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+/* ----------------------------- Parsers/Logs ---------------------------- */
+app.use(morgan('dev'));
+app.use(express.json());
 app.use(cookieParser());
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: false }));
 app.use(compression());
 app.use(securityHeaders);
 app.use(attachUserFromAccessCookie);
-
-// statyczne pliki (np. PDF certyfikatów)
-app.use('/public', express.static(path.join(__dirname, 'public')));
-
-/* --------------------------------- Ping --------------------------------- */
-app.get('/health', (_req, res) => res.json({ ok: true }));
 
 /* --------------------------------- CSRF --------------------------------- */
 app.get('/csrf', (req, res) => {
@@ -85,12 +78,18 @@ app.use('/auth', apiLimiter, csrfProtection, authRouter);
 // Publiczny katalog (GET)
 app.use('/catalog', catalogRouter);
 
-// Kursy użytkownika, moduły, progres, quizy, płatności, certyfikaty
+// Guest checkout (bez CSRF na GET /guest/access)
+app.use('/guest', guestRouter);
+
+// 🔓 Publiczna weryfikacja certyfikatu (BEZ CSRF/BEZ AUTH)
+app.use('/certificates', certificatesPublicRouter);
+
+// Kursy użytkownika, moduły, progres, quizy, płatności, certyfikaty (WYMAGAJĄ CSRF)
 app.use('/courses', apiLimiter, csrfProtection, coursesRouter);
 app.use('/modules', apiLimiter, csrfProtection, modulesRouter);
 app.use('/progress', apiLimiter, csrfProtection, progressRouter);
 app.use('/quiz', apiLimiter, csrfProtection, quizRouter);
-app.use('/payments', apiLimiter, csrfProtection, paymentsRouter);   // ⬅️ PODPIĘTE
+app.use('/payments', apiLimiter, csrfProtection, paymentsRouter);
 app.use('/certificates', apiLimiter, csrfProtection, certificatesRouter);
 
 /* --------------------------------- 404 ---------------------------------- */

@@ -1,0 +1,11 @@
+<!-- server/templates/guest_link.html -->
+<h2>Twój dostęp do kursu: {{ course.title }}</h2>
+<p>Kliknij poniższy przycisk, aby przejść bez logowania prosto do kursu:</p>
+<p style="margin:16px 0">
+  <a href="{{ link }}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0d1b3d;color:#fff;text-decoration:none">
+    Otwórz kurs
+  </a>
+</p>
+<p>Jeśli przycisk nie działa, skopiuj link do przeglądarki:<br/>
+  <span style="font-family:monospace">{{ link }}</span>
+</p>

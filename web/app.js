@@ -1,5 +1,6 @@
-// Małe utilsy UI + globalny logout przez wrapper API
-const API = window.__API__ || 'http://localhost:3001';
+// web/app.js
+// Małe utilsy UI + globalny logout przez wrapper API (same-origin przez /api)
+const API = '/api';
 
 function getCookie(name) {
   const v = document.cookie.split('; ').find(row => row.startsWith(name + '='));
@@ -14,29 +15,35 @@ export function showToast(msg) {
   setTimeout(() => (t.style.display = 'none'), 2000);
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Baner cookies – jeśli masz na stronach
-  const banner = document.getElementById('cookiesBanner');
-  if (banner) {
-    const okBtn = banner.querySelector('button[data-accept]');
-    okBtn?.addEventListener('click', () => {
-      document.cookie = 'cookies_ok=1; path=/; max-age=31536000';
-      banner.style.display = 'none';
-    });
-  }
+// UI: schowaj domyślnie przyciski, pokaż gdy mamy dostęp (cookie access ustawiane po /guest/access/:token)
+function syncAuthUi() {
+  const access = getCookie('access');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const panelLink = document.querySelector('a[href="./panel.html"]');
 
-  // Globalny przycisk „Wyloguj”
+  if (access) {
+    logoutBtn && (logoutBtn.style.display = '');
+    panelLink && (panelLink.style.display = '');
+  } else {
+    logoutBtn && (logoutBtn.style.display = 'none');
+    panelLink && (panelLink.style.display = 'none');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  syncAuthUi();
+
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       try {
-        // korzystamy z fetch bezpośrednio tutaj, ale z pełną obsługą CSRF+cookies
+        // CSRF double-submit: cookie 'csrf' ustawia /api/csrf, więc wystarczy go odczytać
         const res = await fetch(API + '/auth/logout', {
           method: 'POST',
           credentials: 'include',
           headers: { 'x-csrf-token': getCookie('csrf') }
         });
-        // ignorujemy zwrotkę – ważne, że cookie po stronie serwera zniknie
+        // ignorujemy odpowiedź – ważne, że cookie po stronie serwera zniknie
       } catch {}
       localStorage.removeItem('user');
       alert('Wylogowano.');
