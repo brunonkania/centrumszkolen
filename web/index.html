@@ -1,34 +1,155 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Centrum Szkoleń</title>
-  <link rel="stylesheet" href="public/style.css" />
+  <meta charset="utf-8">
+  <title>ProLevel — Centrum szkoleniowe (bez konta)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ProLevel: kursy online z certyfikatem i dostępem przez link po zakupie. Bez logowania.">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <a href="index.html" class="logo">Centrum Szkoleń</a>
-    <nav>
-      <a href="panel.html">Moje kursy</a>
-      <a href="kursy.html">Sklep</a>
-      <a href="regulamin.html">Regulamin</a>
-      <a href="polityka.html">Polityka</a>
-      <a href="logowanie.html" class="btn-secondary">Wyloguj</a>
-    </nav>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="brand" href="../index.html"><div class="brand__logo"></div><div class="brand__name">ProLevel</div></a>
+      <nav class="nav">
+        <a class="btn btn--ghost" href="#sklep">Sklep</a>
+        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
+      </nav>
+      <button id="hamburger" class="hamburger">☰</button>
+    </div>
+    <div id="mobile" class="mobile">
+      <div class="container nav-col">
+        <a class="btn btn--ghost" href="#sklep">Sklep</a>
+        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
+      </div>
+    </div>
   </header>
 
-  <main class="container">
-    <h1>Witaj w Centrum Szkoleń</h1>
-    <p id="api-status">Łączenie z API...</p>
-
-    <div class="card-grid">
-      <div class="card"><h3>Panel kursanta</h3><p>Sprawdź dostępne kursy i postęp.</p></div>
-      <div class="card"><h3>Sklep</h3><p>Kup dostęp do kursów.</p></div>
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <div class="pill kicker">Centrum szkoleniowe online</div>
+        <h1>Ucz się wygodnie. Dostęp z maila, bez konta.</h1>
+        <p>Kupujesz kurs, a my wysyłamy **link dostępu** do materiałów i egzaminu. Po zdaniu – certyfikat PDF z numerem weryfikacyjnym.</p>
+        <div class="hero-cta">
+          <a class="btn" href="#sklep">Przeglądaj kursy</a>
+          <a class="btn btn--ghost" href="/certyfikaty.html">Zweryfikuj certyfikat</a>
+        </div>
+      </div>
+      <div class="hero-card">
+        <h3 class="hero-card__title">Jak to działa?</h3>
+        <div class="hero-card__row"><span>Wybierz kurs</span><span class="badge">Sklep</span></div>
+        <div class="hero-card__row"><span>Zapłać</span><span class="badge">Bez konta</span></div>
+        <div class="hero-card__row"><span>Odbierz link w e-mailu</span><div class="loader"></div></div>
+      </div>
     </div>
-  </main>
+  </section>
 
-  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+  <section class="section">
+    <div class="container">
+      <div class="features">
+        <div class="feature"><h3>Bez logowania</h3><p>Link magiczny na maila – od razu dostęp do materiałów.</p></div>
+        <div class="feature"><h3>Certyfikat PDF</h3><p>Unikalny numer + weryfikacja online.</p></div>
+        <div class="feature"><h3>Quiz końcowy</h3><p>Sprawdź się i pobierz certyfikat po zaliczeniu.</p></div>
+      </div>
+    </div>
+  </section>
 
-  <script type="module" src="./js/home.js?v=1"></script>
+  <!-- SKLEP -->
+  <section id="sklep" class="section">
+    <div class="container">
+      <div class="section__head">
+        <h2 class="section__title">Sklep — wszystkie kursy</h2>
+        <p class="section__desc">Wybierz kurs i zacznij jeszcze dziś</p>
+      </div>
+
+      <div class="hero-card" style="margin-bottom:18px;">
+        <div class="grid-2">
+          <input id="q" class="input" type="search" placeholder="Szukaj kursu… (tytuł, opis)">
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button id="btnReset" class="btn btn--ghost">Wyczyść</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="list" class="cards" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>© <span id="year"></span> ProLevel</div>
+      <div style="display:flex; gap:16px;">
+        <a href="/regulamin.html">Regulamin</a>
+        <a href="/polityka.html">Polityka prywatności</a>
+        <a href="/kontakt.html">Kontakt</a>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast"></div>
+  <script src="/js/app.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const input = document.getElementById('q');
+    const btnReset = document.getElementById('btnReset');
+    const list = document.getElementById('list');
+
+    let items = [];
+    let filtered = [];
+
+    function render(data){
+      list.innerHTML = '';
+      if(data.length === 0){
+        list.innerHTML = '<p class="card__desc">Nie znaleziono kursów dla podanego filtra.</p>';
+        return;
+      }
+      for(const it of data){
+        const el = document.createElement('article');
+        el.className = 'card';
+        el.innerHTML = `
+          <div class="card__media" ${it.thumbnail_url ? `style="background:url('${it.thumbnail_url}') center/cover no-repeat"` : ''}></div>
+          <div class="card__body">
+            <h3 class="card__title">${escapeHtml(it.title)}</h3>
+            <p class="card__desc">${escapeHtml(it.description || '')}</p>
+            <div class="card__meta">
+              <span class="price">${formatPrice(it.price_cents)}</span>
+              <a class="btn" href="/kurs/${encodeURIComponent(it.slug)}">Zobacz</a>
+            </div>
+          </div>`;
+        list.appendChild(el);
+      }
+    }
+
+    function applyFilter(){
+      const q = (input.value || '').trim().toLowerCase();
+      filtered = !q ? items : items.filter(it =>
+        (it.title||'').toLowerCase().includes(q) ||
+        (it.description||'').toLowerCase().includes(q)
+      );
+      render(filtered);
+    }
+
+    function formatPrice(cents){ return typeof cents==='number' ? (cents/100).toLocaleString('pl-PL',{style:'currency',currency:'PLN'}) : '—'; }
+    function escapeHtml(s){
+      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
+    }
+
+    async function load(){
+      try{
+        const data = await APP.api('/catalog');
+        items = data.items || [];
+        filtered = items;
+        render(filtered);
+      }catch(e){
+        list.innerHTML = '<p class="card__desc">Nie udało się pobrać listy kursów.</p>';
+      }
+    }
+
+    input.addEventListener('input', applyFilter);
+    btnReset.addEventListener('click', ()=>{ input.value=''; applyFilter(); });
+    load();
+  </script>
 </body>
 </html>

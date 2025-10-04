@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>Materiały kursu – ProLevel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dostęp do materiałów kursu">
+  <link rel="stylesheet" href="/css/a11y.css">
+<link rel="stylesheet" href="/cookie-consent.css">
+<script>window.GA_MEASUREMENT_ID="G-XXXXXXX";</script>
+<script src="/js/cookie-consent.js" defer></script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="page">
+  <header class="site-header">
+    <a class="logo" href="/index.html">ProLevel</a>
+    <nav>
+      <a href="/sklep.html" class="btn btn-tertiary">Sklep</a>
+    </nav>
+  </header>
+
+  <main class="container" style="padding: 32px 16px; max-width: 980px;">
+    <div id="materials-status" class="alert" style="display:none"></div>
+
+    <section id="course-box" class="card" style="display:none">
+      <div class="card-body">
+        <h1 id="course-title" class="card-title"></h1>
+        <p id="course-meta" class="muted"></p>
+      </div>
+    </section>
+
+    <section id="materials-list" class="grid" style="margin-top:16px;"></section>
+
+    <template id="tpl-item">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title"></h3>
+          <p class="card-desc"></p>
+          <a class="btn btn-primary" target="_blank" rel="noopener">Otwórz</a>
+        </div>
+      </div>
+    </template>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; <span id="y"></span> ProLevel</p>
+  </footer>
+
+  <script src="/js/materials.js" defer></script>
+  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>
+</body>
+</html>

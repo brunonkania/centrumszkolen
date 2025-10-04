@@ -1,28 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Karta kursu – Centrum Szkoleń</title>
-  <link rel="stylesheet" href="public/style.css" />
+  <meta charset="utf-8">
+  <title>Kurs — ProLevel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Szczegóły kursu ProLevel. Kup bez konta — link dostępu otrzymasz na e-mail.">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <a href="index.html" class="logo">Centrum Szkoleń</a>
-    <nav>
-      <a href="kursy.html">Sklep</a>
-      <a href="panel.html">Moje kursy</a>
-      <a href="#" class="btn-secondary" data-logout>Wyloguj</a>
-    </nav>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="brand" href="../index.html"><div class="brand__logo"></div><div class="brand__name">ProLevel</div></a>
+      <nav class="nav">
+        <a class="btn btn--ghost" href="/#sklep">Sklep</a>
+        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
+      </nav>
+      <button id="hamburger" class="hamburger">☰</button>
+    </div>
+    <div id="mobile" class="mobile">
+      <div class="container nav-col">
+        <a class="btn btn--ghost" href="/#sklep">Sklep</a>
+        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
+      </div>
+    </div>
   </header>
 
-  <main class="container">
-    <h1 id="title">Kurs</h1>
-    <div id="mods" class="module-list">Ładowanie…</div>
+  <main class="section">
+    <div class="container">
+      <div id="cover" class="hero-card" style="margin-bottom:18px; min-height:160px;"></div>
+      <div class="grid-2">
+        <div>
+          <h1 id="title" class="section__title">Kurs</h1>
+          <p id="desc" class="section__desc"></p>
+          <hr class="sep">
+          <div id="includes">
+            <h3>Co zawiera kurs</h3>
+            <ul>
+              <li>Materiały wideo/tekst</li>
+              <li>Egzamin końcowy (online)</li>
+              <li>Certyfikat PDF po zaliczeniu</li>
+            </ul>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <div class="hero-card__row"><strong>Cena</strong> <span id="price" class="price">—</span></div>
+          <div class="hero-card__row"><strong>Poziom</strong> <span class="badge">Podstawowy</span></div>
+          <hr class="sep">
+          <form id="buyForm" class="grid-2" onsubmit="return false;">
+            <input id="email" class="input" type="email" placeholder="Twój e-mail" required>
+            <button id="buy" class="btn" type="submit">Kup bez konta</button>
+          </form>
+          <p class="card__desc" style="margin-top:12px">Po płatności otrzymasz e-mail z linkiem do materiałów.</p>
+          <div id="afterBuy" class="card__desc" style="margin-top:8px;"></div>
+        </aside>
+      </div>
+    </div>
   </main>
 
-  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>© <span id="year"></span> ProLevel</div>
+      <div style="display:flex; gap:16px;">
+        <a href="/regulamin.html">Regulamin</a>
+        <a href="/polityka.html">Polityka prywatności</a>
+        <a href="/kontakt.html">Kontakt</a>
+      </div>
+    </div>
+  </footer>
 
-  <script type="module" src="./js/course.js?v=1"></script>
-  <script type="module" src="./js/boot.js"></script>
+  <div id="toast" class="toast"></div>
+  <script src="/js/app.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('slug'); // <— klucz
+
+    const state = { item:null };
+
+    async function load(){
+      try{
+        const res = await fetch('/api/course/' + encodeURIComponent(slug));
+        if(!res.ok){ throw new Error('not-found'); }
+        const data = await res.json();
+        const item = data.item;
+        state.item = item;
+
+        document.getElementById('title').textContent = item.title;
+        document.getElementById('desc').textContent = item.description || '';
+        document.getElementById('price').textContent = formatPrice(item.price_cents);
+        const cover = document.getElementById('cover');
+        cover.style.background = item.thumbnail_url
+          ? `url('${item.thumbnail_url}') center/cover no-repeat`
+          : `var(--grad-strong)`;
+      }catch(e){
+        document.getElementById('title').textContent = 'Nie znaleziono kursu';
+      }
+    }
+
+    function formatPrice(cents){ return typeof cents==='number' ? (cents/100).toLocaleString('pl-PL',{style:'currency',currency:'PLN'}) : '—'; }
+
+    document.getElementById('buyForm').addEventListener('submit', async ()=>{
+      try{
+        const email = document.getElementById('email').value.trim();
+        if(!email){ return; }
+        // DEV: wołamy bezpośrednio checkout no-auth
+        const res = await fetch('/api/guest/checkout', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, course_slug: slug })
+        });
+        if(!res.ok){ throw new Error(await res.text()); }
+        const out = await res.json();
+        APP.toast('Super! Sprawdź maila po szczegóły.');
+        document.getElementById('afterBuy').innerHTML = out.access_url
+          ? `Dla testów: <a href="${out.access_url}">otwórz materiały</a>`
+          : 'Link został wysłany na e-mail.';
+      }catch(e){
+        APP.toast('Nie udało się rozpocząć zakupu.');
+      }
+    });
+
+    load();
+  </script>
 </body>
 </html>

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>Dostęp do materiałów — ProLevel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dostęp do materiałów kursu i egzaminu przez dedykowany link.">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .mod{ background:#fff; border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow: var(--shadow); }
+    .mod + .mod{ margin-top:12px; }
+    .quiz-q{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px; margin:10px 0; }
+    .quiz-q h4{ margin:0 0 8px; }
+    .result{ padding:12px; border-radius:12px; background:#eef7ff; color:#134e87; margin-top:12px; display:none; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="brand" href="../index.html">
+        <div class="brand__logo"></div>
+        <div class="brand__name">ProLevel</div>
+      </a>
+      <nav class="nav">
+        <a class="btn btn--ghost" href="/#sklep">Sklep</a>
+        <a class="btn btn--ghost" href="/kontakt.html">Kontakt</a>
+      </nav>
+      <button id="hamburger" class="hamburger">☰</button>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container">
+      <h1 id="title" class="section__title">Materiały kursu</h1>
+      <p class="section__desc">Dostęp przyznany przez link. Nie udostępniaj go innym osobom.</p>
+
+      <section id="materials" style="margin:14px 0 22px;"></section>
+
+      <section class="hero-card">
+        <h3>Egzamin końcowy</h3>
+        <form id="quiz"></form>
+        <div id="examResult" class="result"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>© <span id="year"></span> ProLevel</div>
+      <div style="display:flex; gap:16px;">
+        <a href="/regulamin.html">Regulamin</a>
+        <a href="/polityka.html">Polityka prywatności</a>
+        <a href="/kontakt.html">Kontakt</a>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast"></div>
+  <script src="/js/app.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    const p = new URLSearchParams(location.search);
+    const token = p.get('t');
+    const courseId = p.get('course_id');
+
+    if(!token){
+      APP.toast('Brak tokenu dostępu w linku.');
+    }
+
+    async function load(){
+      try{
+        const data = await APP.api(`/access?t=${encodeURIComponent(token)}${courseId ? '&course_id='+encodeURIComponent(courseId) : ''}`);
+        // { title, modules: [ {title, content, video_url?} ], exam: [ {id, question, options:[], type:'single'} ] }
+        document.getElementById('title').textContent = data.title || 'Materiały kursu';
+
+        const box = document.getElementById('materials');
+        box.innerHTML = '';
+        (data.modules||[]).forEach(m=>{
+          const el = document.createElement('div');
+          el.className = 'mod';
+          el.innerHTML = `
+            <h3 style="margin:0 0 6px">${escapeHtml(m.title)}</h3>
+            ${m.video_url ? `<div style="aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden; margin:8px 0">
+              <iframe src="${m.video_url}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
+            </div>`: ''}
+            <div class="card__desc">${escapeHtml(m.content || '')}</div>
+          `;
+          box.appendChild(el);
+        });
+
+        renderExam(data.exam||[]);
+      }catch(e){
+        APP.toast('Nie udało się pobrać materiałów.');
+      }
+    }
+
+    function renderExam(questions){
+      const form = document.getElementById('quiz');
+      form.innerHTML = '';
+      questions.forEach((q, idx)=>{
+        const wrap = document.createElement('div');
+        wrap.className = 'quiz-q';
+        const name = `q_${q.id ?? idx}`;
+        wrap.innerHTML = `
+          <h4>${idx+1}. ${escapeHtml(q.question)}</h4>
+          ${(q.options||[]).map((opt,i)=>`
+            <label style="display:block; margin:6px 0;">
+              <input type="radio" name="${name}" value="${i}"> ${escapeHtml(opt)}
+            </label>
+          `).join('')}
+        `;
+        form.appendChild(wrap);
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'grid-2';
+      actions.innerHTML = `
+        <button type="submit" class="btn">Zakończ i wyślij</button>
+        <a href="/#sklep" class="btn btn--ghost">Wróć</a>
+      `;
+      form.appendChild(actions);
+
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const answers = [];
+        questions.forEach((q, idx)=>{
+          const name = `q_${q.id ?? idx}`;
+          const checked = document.querySelector(`input[name="${name}"]:checked`);
+          answers.push(checked ? Number(checked.value) : null);
+        });
+
+        try{
+          const res = await APP.api('/exam/submit', {
+            method:'POST',
+            body: JSON.stringify({ t: token, course_id: courseId, answers })
+          });
+          const box = document.getElementById('examResult');
+          box.style.display = 'block';
+          if(res.passed){
+            box.innerHTML = `✅ Gratulacje! Zdałeś egzamin z wynikiem <b>${res.score}%</b>.<br>
+              Twój certyfikat: ${res.certificate_url ? `<a href="${res.certificate_url}">pobierz PDF</a>` : 'zostanie wkrótce wygenerowany.'}`;
+          }else{
+            box.innerHTML = `❌ Wynik: <b>${res.score}%</b>. Spróbuj ponownie po krótkiej przerwie.`;
+          }
+          window.scrollTo({ top: box.offsetTop - 60, behavior: 'smooth' });
+        }catch(e){
+          APP.toast('Nie udało się wysłać egzaminu.');
+        }
+      });
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'","&#39;");
+    }
+
+    load();
+  </script>
+</body>
+</html>

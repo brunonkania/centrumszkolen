@@ -1,30 +1,135 @@
 <!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Zakup kursu</title>
-  <link rel="stylesheet" href="./style.css" />
+  <meta charset="utf-8">
+  <title>Checkout — Kup bez konta | ProLevel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Zakup kursu bez zakładania konta. Podaj e-mail, a wyślemy magiczny link dostępu.">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .checkout-grid{ display:grid; grid-template-columns:1.2fr .8fr; gap:22px; }
+    @media (max-width:900px){ .checkout-grid{ grid-template-columns:1fr; } }
+    .form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+    label{ font-weight:600; }
+    .muted{ color: var(--muted); font-size:14px; }
+    .terms{ display:flex; align-items:flex-start; gap:10px; }
+    .code{ background:#fff; border:1px dashed var(--border); padding:10px; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <a class="logo" href="./index.html">Centrum Szkoleń</a>
-    <nav class="topnav">
-      <a href="./panel.html">Moje kursy</a>
-      <button id="logoutBtn" class="btn btn-secondary">Wyloguj</button>
-    </nav>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="brand" href="../index.html">
+        <div class="brand__logo"></div>
+        <div class="brand__name">ProLevel</div>
+      </a>
+      <nav class="nav">
+        <a class="btn btn--ghost" href="/#sklep">Sklep</a>
+        <a class="btn btn--ghost" href="/kalkulatory.html">Kalkulatory</a>
+        <a class="btn btn--ghost" href="/klubtrenera.html">Klub Trenera</a>
+      </nav>
+      <button id="hamburger" class="hamburger">☰</button>
+    </div>
   </header>
 
-  <main class="container">
-    <section class="card" style="max-width:560px;margin:40px auto;">
-      <h2>Podsumowanie</h2>
-      <p>Zakup wybranego kursu. Po opłaceniu dostęp pojawi się w „Moje kursy”.</p>
-      <button id="payBtn" class="btn">Kup teraz</button>
-      <p id="msg" class="muted" style="min-height:1.4em;"></p>
-    </section>
+  <main class="section">
+    <div class="container checkout-grid">
+      <section>
+        <h1 class="section__title">Zakup bez konta</h1>
+        <p class="section__desc">Podaj swój adres e-mail — po płatności wyślemy link dostępu do materiałów i egzaminu.</p>
+
+        <form id="form" class="hero-card" autocomplete="on">
+          <div class="form-row">
+            <label for="email">E-mail</label>
+            <input id="email" class="input" type="email" placeholder="np. kowalski@example.com" required>
+          </div>
+          <div class="terms">
+            <input id="agree" type="checkbox" required>
+            <label for="agree" class="muted">Akceptuję regulamin i politykę prywatności.</label>
+          </div>
+          <hr class="sep">
+          <div class="grid-2">
+            <button class="btn" type="submit">Przejdź do płatności</button>
+            <a class="btn btn--ghost" href="/#sklep">Anuluj</a>
+          </div>
+          <p id="hint" class="muted" style="margin-top:10px;"></p>
+          <div id="devlink" class="code" style="display:none; margin-top:10px;"></div>
+        </form>
+      </section>
+
+      <aside class="hero-card">
+        <h3 class="hero-card__title">Podsumowanie</h3>
+        <div class="hero-card__row"><span>Kurs</span><strong id="c-title">—</strong></div>
+        <div class="hero-card__row"><span>Cena</span><strong id="c-price">—</strong></div>
+        <hr class="sep">
+        <p class="card__desc">Po opłaceniu zamówienia wyślemy na e-mail <b>link dostępu</b>. Link otwiera stronę z materiałami i egzaminem.</p>
+      </aside>
+    </div>
   </main>
 
-  <script type="module" src="./app.js"></script>
-  <script type="module" src="./js/shop.js"></script>
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>© <span id="year"></span> ProLevel</div>
+      <div style="display:flex; gap:16px;">
+        <a href="/regulamin.html">Regulamin</a>
+        <a href="/polityka.html">Polityka prywatności</a>
+        <a href="/kontakt.html">Kontakt</a>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast"></div>
+  <script src="/js/app.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    const params = new URLSearchParams(location.search);
+    const courseId = params.get('course_id');
+
+    // Wczytaj tytuł/cenę do podsumowania
+    async function boot(){
+      try{
+        const data = await APP.api('/catalog');
+        const item = (data.items||[]).find(x=> String(x.id)===String(courseId));
+        if(item){
+          document.getElementById('c-title').textContent = item.title;
+          document.getElementById('c-price').textContent = formatPrice(item.price_cents);
+        }
+      }catch(e){}
+    }
+    boot();
+
+    function formatPrice(cents){
+      if(typeof cents !== 'number') return '—';
+      return (cents/100).toLocaleString('pl-PL',{style:'currency',currency:'PLN'});
+    }
+
+    // Submit: tworzy zamówienie i (w DEV) zwraca magic link
+    document.getElementById('form').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const agree = document.getElementById('agree').checked;
+      if(!email || !agree) return;
+
+      try{
+        const payload = { course_id: courseId, email };
+        const res = await APP.api('/checkout', { method:'POST', body: JSON.stringify(payload) });
+
+        // PROD: zwykle redirect do bramki płatności. W DEV (mock) dostaniesz magic_link:
+        if(res.magic_link){
+          APP.toast('Link dostępu wysłany (DEV: poniżej masz podgląd linku).');
+          const dev = document.getElementById('devlink');
+          dev.style.display = 'block';
+          dev.innerHTML = `<strong>DEV link:</strong><br><a href="${res.magic_link}">${res.magic_link}</a>`;
+          document.getElementById('hint').textContent = 'Na produkcji użytkownik otrzyma ten link e-mailem po potwierdzeniu płatności.';
+        }else if(res.redirect_url){
+          location.href = res.redirect_url; // np. PayU/Przelewy24
+        }else{
+          APP.toast('Zamówienie utworzone.');
+        }
+      }catch(err){
+        APP.toast('Nie udało się rozpocząć zakupu.');
+      }
+    });
+  </script>
 </body>
 </html>
