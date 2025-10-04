@@ -1,32 +1,241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Moduł – Centrum Szkoleń</title>
-  <link rel="stylesheet" href="public/style.css" />
+  <meta charset="utf-8" />
+  <title>Moduł kursu | Centrum Szkoleniowe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Przerabiaj lekcje modułu, oglądaj materiały i oznaczaj postępy." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .layout{display:grid;gap:16px}
+    @media(min-width:980px){.layout{grid-template-columns:320px 1fr}}
+    .side{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:0 6px 18px rgba(16,22,38,.04);display:grid;gap:8px;height:max-content;position:sticky;top:86px}
+    .lesson{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer}
+    .lesson[aria-current="true"]{border-color:var(--ring);box-shadow:0 0 0 4px var(--ring)}
+    .badge{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:999px;background:linear-gradient(135deg,var(--violet),var(--pink));color:#fff;font-weight:800}
+    .content{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 18px rgba(16,22,38,.04)}
+    .content .card__body > * + *{margin-top:10px}
+    .embed{position:relative;padding-top:56%;background:#000;border-radius:12px;overflow:hidden}
+    .embed > iframe, .embed > video{position:absolute;inset:0;width:100%;height:100%;border:0}
+    .bar{height:10px;border:1px solid var(--border);border-radius:999px;background:#fff;overflow:hidden}
+    .bar>i{display:block;height:100%;width:0;background:linear-gradient(135deg,var(--violet),var(--pink));transition:width .35s ease}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;font-weight:700}
+    pre.code{background:#0b1020;color:#dbeafe;border-radius:12px;padding:14px;overflow:auto}
+  </style>
 </head>
 <body>
-  <header class="site-header">
-    <a href="index.html" class="logo">Centrum Szkoleń</a>
-    <nav>
-      <a href="kursy.html">Sklep</a>
-      <a href="panel.html">Moje kursy</a>
-      <a href="#" class="btn-secondary" data-logout>Wyloguj</a>
-    </nav>
+  <header class="header">
+    <div class="container header__inner">
+      <div class="brand"><span class="brand__dot"></span><span>Centrum Szkoleniowe</span></div>
+      <button id="menu" class="hamburger" aria-label="Menu" title="Menu">≡</button>
+      <nav id="nav" class="nav">
+        <a class="nav-link" href="./index.html#sklep">Sklep</a>
+        <a class="nav-link" href="./materials.html">Materiały</a>
+        <a class="nav-link" href="./quiz.html">Quiz</a>
+      </nav>
+    </div>
   </header>
 
-  <main class="container">
-    <h1 id="h1">Moduł</h1>
-    <div class="module-content" id="content">Ładowanie…</div>
-    <div class="mt-20">
-      <button class="btn-primary" id="finish">Zakończ moduł</button>
-      <a class="btn-secondary" id="back">← Wróć do kursu</a>
-    </div>
+  <main>
+    <!-- HERO -->
+    <section class="banner reveal center">
+      <h1 id="title">Moduł</h1>
+      <p id="desc" class="muted">Wczytywanie modułu…</p>
+      <div class="banner__cta">
+        <a class="btn btn--ghost" id="back" href="./materials.html">← Wróć do listy modułów</a>
+        <a class="btn" id="toQuiz" href="#">Przejdź do quizu</a>
+      </div>
+    </section>
+
+    <!-- Układ: lista lekcji + treść -->
+    <section class="container section reveal">
+      <div class="section__head">
+        <div>
+          <h2 class="section__title">Lekcje modułu</h2>
+          <p class="section__desc">Otwórz lekcję i oznacz ją jako przerobioną</p>
+        </div>
+        <div class="pill">Postęp: <span id="pct">0</span>%</div>
+      </div>
+
+      <div class="layout" data-stagger>
+        <aside class="side reveal">
+          <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+          <div id="lessons" style="display:grid;gap:8px"></div>
+        </aside>
+
+        <article class="content card reveal">
+          <div class="card__body">
+            <h3 id="l-title" class="card__title">Wybierz lekcję</h3>
+            <div id="viewer" class="reveal in"></div>
+            <div class="card__row">
+              <button id="mark" class="btn">Oznacz jako przerobione</button>
+              <div style="flex:1"></div>
+              <a id="prev" class="btn btn--ghost" href="#">← Poprzednia</a>
+              <a id="next" class="btn" href="#">Następna →</a>
+            </div>
+          </div>
+        </article>
+      </div>
+      <p id="state" class="section__desc" style="margin-top:10px"></p>
+    </section>
   </main>
 
-  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+  <footer class="container section" style="padding-bottom:28px">
+    <hr/>
+    <div style="display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap">
+      <div>&copy; <span id="year"></span> Centrum Szkoleniowe</div>
+      <nav style="display:flex;gap:10px">
+        <a class="nav-link" href="./polityka.html">Polityka prywatności</a>
+        <a class="nav-link" href="./regulamin.html">Regulamin</a>
+      </nav>
+    </div>
+  </footer>
 
-  <script type="module" src="./js/module.js?v=1"></script>
-  <script type="module" src="./js/boot.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    /* helpers */
+    const qs=(s,el=document)=>el.querySelector(s);
+    const qsa=(s,el=document)=>Array.from(el.querySelectorAll(s));
+    const toast=(m)=>{const el=qs('#toast'); el.textContent=m; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2600);};
+    const handle=async(r)=>{let j=null; try{j=await r.json();}catch{} if(!r.ok||(j&&j.ok===false)){throw new Error(j?.error?.message||`HTTP ${r.status}`)} return j??{ok:true,data:null}};
+    const api={get:(u)=>fetch(u,{credentials:'same-origin'}).then(handle), post:(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(b||{})}).then(handle)};
+
+    /* nav/year/reveal */
+    const nav=qs('#nav'); qs('#menu')?.addEventListener('click',()=>nav?.classList.toggle('open'));
+    qs('#year').textContent=new Date().getFullYear();
+    const io=new IntersectionObserver(ents=>{ents.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in'); io.unobserve(e.target)}})},{threshold:.15});
+    qsa('.reveal').forEach(el=>io.observe(el));
+    const setStagger=(root=document)=>root.querySelectorAll('[data-stagger]').forEach(b=>Array.from(b.children).forEach((c,i)=>c.style.setProperty('--d',`${Math.min(i*80,400)}ms`)));
+    setStagger();
+
+    /* params */
+    const p=new URLSearchParams(location.search);
+    const course=p.get('course') || localStorage.getItem('lastCourseSlug') || '';
+    const moduleId=p.get('module') || p.get('id') || '';
+    const back=qs('#back'); back.href=`./materials.html?slug=${encodeURIComponent(course)}`;
+    qs('#toQuiz').href=`./quiz.html?slug=${encodeURIComponent(course)}`;
+
+    const title=qs('#title'); const desc=qs('#desc'); const lessonsBox=qs('#lessons'); const viewer=qs('#viewer'); const lTitle=qs('#l-title');
+    const bar=qs('#bar'); const pct=qs('#pct'); const state=qs('#state');
+
+    /* local progress util */
+    const progKey=()=>`progress_${course}`;
+    function readCourseProgress(){ try{return JSON.parse(localStorage.getItem(progKey())||'{}')}catch{return{}} }
+    function writeCourseProgress(obj){ localStorage.setItem(progKey(), JSON.stringify(obj)); }
+    function setProgress(moduleId, total, listDone){
+      const data=readCourseProgress();
+      data[moduleId]={ done: listDone.size, total };
+      writeCourseProgress(data);
+      const percent= total? Math.round(listDone.size/total*100):0;
+      pct.textContent=percent; bar.style.width=percent+'%';
+    }
+
+    let MODULE=null; let LESSONS=[]; let idx=0; const doneSet=new Set(); // lesson ids
+
+    function renderLessons(){
+      lessonsBox.innerHTML = LESSONS.map((l,i)=>{
+        const id = l.id ?? `l${i}`;
+        const done = doneSet.has(id);
+        const ico = done ? '✓' : i+1;
+        return `<button class="lesson" data-i="${i}" aria-current="${i===idx?'true':'false'}"><span class="badge">${ico}</span><span>${l.title || l.name || 'Lekcja'}</span></button>`;
+      }).join('');
+      qsa('.lesson',lessonsBox).forEach(btn=>{
+        btn.addEventListener('click',()=>{ idx=parseInt(btn.getAttribute('data-i')); viewLesson(); renderLessons(); });
+      });
+      setStagger(document); qsa('.lesson',lessonsBox).forEach(el=>io.observe(el));
+    }
+
+    function viewLesson(){
+      const l=LESSONS[idx]; if(!l) return;
+      const id=l.id ?? `l${idx}`;
+      lTitle.textContent = l.title || l.name || `Lekcja ${idx+1}`;
+      // content types: video | embed | pdf | html | text | code
+      viewer.innerHTML='';
+      if(l.video || l.embed){
+        const src = l.video || l.embed;
+        viewer.innerHTML = `<div class="embed"><iframe src="${src}" allowfullscreen loading="lazy"></iframe></div>`;
+      }else if(l.pdf){
+        const src = l.pdf;
+        viewer.innerHTML = `<div class="embed"><iframe src="${src}#view=fitH" loading="lazy"></iframe></div>`;
+      }else if(l.code){
+        const code = (l.code||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        viewer.innerHTML = `<pre class="code"><code>${code}</code></pre>`;
+      }else{
+        const html = l.html || l.text || l.content || 'Materiał tekstowy.';
+        viewer.innerHTML = `<div class="card__desc">${html}</div>`;
+      }
+      // aria-current update
+      qsa('.lesson',lessonsBox).forEach(b=>b.setAttribute('aria-current','false'));
+      const cur=qs(`.lesson[data-i="${idx}"]`); cur?.setAttribute('aria-current','true');
+
+      // prev/next
+      qs('#prev').href = idx>0 ? `#l${idx}` : '#'; qs('#prev').onclick = (e)=>{ e.preventDefault(); if(idx>0){idx--; viewLesson(); renderLessons();} };
+      qs('#next').href = idx<LESSONS.length-1 ? `#l${idx+2}` : '#'; qs('#next').onclick = (e)=>{ e.preventDefault(); if(idx<LESSONS.length-1){idx++; viewLesson(); renderLessons();} };
+
+      // mark button
+      const mark=qs('#mark');
+      const marked = doneSet.has(id);
+      mark.textContent = marked ? 'Oznaczono ✓' : 'Oznacz jako przerobione';
+      mark.disabled = marked;
+      mark.onclick = async ()=>{
+        try{
+          // zapisz lokalnie
+          doneSet.add(id);
+          setProgress(moduleId, LESSONS.length, doneSet);
+          // spróbuj zapisać na backendzie (dowolny z endpointów)
+          const payload={ course, moduleId, lessonId:id, done:true };
+          const urls=[ `/api/progress/complete`, `/api/modules/${moduleId}/progress`, `/api/courses/${course}/progress` ];
+          for(const u of urls){ try{ await api.post(u, payload); break; }catch{} }
+          toast('Zapisano postęp ✅');
+          renderLessons(); viewLesson();
+        }catch(e){ toast('Nie udało się zapisać postępu'); }
+      };
+    }
+
+    async function loadModule(){
+      // meta kursu
+      try{ const j=await api.get(`/api/catalog/${course}`); title.textContent = `Moduł — ${j.data.title} 🧩`; }catch{}
+      // moduł
+      state.textContent='Wczytuję moduł…';
+      const urls=[
+        `/api/courses/${course}/modules/${moduleId}`,
+        `/api/catalog/${course}/modules/${moduleId}`,
+        `/api/modules/${moduleId}`
+      ];
+      let data=null;
+      for(const u of urls){ try{ const j=await api.get(u); data=j.data; if(data) break; }catch{} }
+      if(!data){ state.textContent='Nie znaleziono modułu.'; return; }
+      state.textContent='';
+      MODULE=data;
+      desc.textContent = data.description || data.desc || 'Lekcje modułu.';
+      LESSONS = Array.isArray(data.lessons) ? data.lessons
+               : Array.isArray(data.items)   ? data.items   : [];
+      // progress (wczytaj listę „done” z backendu jeśli się uda)
+      const progUrls=[ `/api/modules/${moduleId}/progress`, `/api/courses/${course}/progress?module=${encodeURIComponent(moduleId)}` ];
+      for(const u of progUrls){
+        try{
+          const r=await api.get(u);
+          const doneList=r.data?.done || r.data?.lessonsDone || [];
+          doneList.forEach(id=>doneSet.add(String(id)));
+          break;
+        }catch{}
+      }
+      // lokalne uzupełnienie
+      const loc = readCourseProgress();
+      if(loc[moduleId]?.done && LESSONS.length && doneSet.size < loc[moduleId].done){
+        // nie wiemy które – bazujmy na indeksach
+        for(let i=0;i<Math.min(loc[moduleId].done, LESSONS.length);i++){
+          const id=LESSONS[i].id ?? `l${i}`;
+          doneSet.add(String(id));
+        }
+      }
+      setProgress(moduleId, LESSONS.length, doneSet);
+
+      renderLessons(); idx=0; viewLesson();
+    }
+
+    await loadModule();
+  </script>
 </body>
 </html>

@@ -19,5 +19,8 @@
   "homepage": "https://github.com/brunonkania/centrumszkolen#readme",
   "dependencies": {
     "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.9"
   }
 }

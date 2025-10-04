@@ -1,6 +1,10 @@
-import app from './app.js';
-import { env } from './config/env.js';
+import { createServer } from 'http';
+import { createApp } from './app.js';
+import { PORT } from './config.js';
 
-app.listen(env.PORT, () => {
-  console.log(`✅ API listening on ${env.PORT} (NODE_ENV=${env.NODE_ENV})`);
+const app = createApp();
+const server = createServer(app);
+
+server.listen(PORT, () => {
+  console.log(`[HTTP] Server listening on http://localhost:${PORT}`);
 });

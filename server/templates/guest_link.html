@@ -1,11 +1,26 @@
-<!-- server/templates/guest_link.html -->
-<h2>Twój dostęp do kursu: {{ course.title }}</h2>
-<p>Kliknij poniższy przycisk, aby przejść bez logowania prosto do kursu:</p>
-<p style="margin:16px 0">
-  <a href="{{ link }}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0d1b3d;color:#fff;text-decoration:none">
-    Otwórz kurs
-  </a>
-</p>
-<p>Jeśli przycisk nie działa, skopiuj link do przeglądarki:<br/>
-  <span style="font-family:monospace">{{ link }}</span>
-</p>
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>Dostęp do materiałów</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Segoe UI, Roboto, Arial, sans-serif; background:#f5f7fa; color:#0d1b3d; padding:24px; }
+    .card { max-width:600px; margin:0 auto; background:#fff; border-radius:16px; padding:24px; box-shadow:0 10px 30px rgba(13,27,61,.08);}
+    .btn { display:inline-block; padding:14px 22px; border-radius:12px; text-decoration:none; font-weight:700; background:linear-gradient(135deg,#a32cc4,#00c3ff); color:#fff; }
+    .muted { color:#506690; font-size:14px; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Twój dostęp do: {{courseTitle}}</h1>
+    <p>Kliknij w przycisk, aby otworzyć materiały:</p>
+    <p>
+      <a class="btn" href="{{linkUrl}}" target="_blank" rel="noopener">Otwórz materiały</a>
+    </p>
+    <p class="muted">Link wygaśnie: <strong>{{expiresAt}}</strong>. Zachowaj tę wiadomość, aby wrócić do materiałów w każdej chwili przed wygaśnięciem.</p>
+    <hr>
+    <p class="muted">Jeśli przycisk nie działa, skopiuj link do przeglądarki: <br>{{linkUrl}}</p>
+  </div>
+</body>
+</html>

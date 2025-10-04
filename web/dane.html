@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Dane do certyfikatu | Centrum Szkoleniowe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Uzupełnij dane osobowe i adresowe do certyfikatu oraz (opcjonalnie) dane do faktury." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .form-grid{display:grid;gap:14px}
+    @media(min-width:980px){.form-grid{grid-template-columns:1fr 1fr}}
+    .box{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:0 6px 18px rgba(16,22,38,.04)}
+    .field{display:grid;gap:6px}
+    .field label{font-weight:800;font-size:14px}
+    .row{display:grid;gap:12px}
+    @media(min-width:680px){.row.cols-2{grid-template-columns:1fr 1fr}}
+    @media(min-width:980px){.row.cols-3{grid-template-columns:1fr 1fr 1fr}}
+    .hint{font-size:12px;color:var(--muted)}
+    .switch{display:flex;align-items:center;gap:10px}
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header__inner">
+      <div class="brand">
+        <span class="brand__dot"></span> <span>Centrum Szkoleniowe</span>
+      </div>
+      <button id="menu" class="hamburger" aria-label="Menu" title="Menu">≡</button>
+      <nav id="nav" class="nav">
+        <a class="nav-link" href="./index.html#sklep">Sklep</a>
+        <a class="nav-link" href="./index.html#faq">FAQ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="banner reveal center" aria-label="Dane do certyfikatu">
+      <h1>Dane do certyfikatu 🏆</h1>
+      <p class="muted">Uzupełnij poniższe pola – przygotujemy Twój certyfikat PDF. Adres e-mail służy do wysyłki linku.</p>
+    </section>
+
+    <!-- FORMULARZ -->
+    <section class="container section reveal" aria-label="Formularz danych">
+      <form id="form" class="form-grid" novalidate>
+        <!-- Dane osobowe -->
+        <fieldset class="box reveal" style="--d:50ms">
+          <legend><strong>1. Dane osobowe</strong></legend>
+          <div class="row cols-2">
+            <div class="field"><label for="first_name">Imię</label><input id="first_name" class="input" autocomplete="given-name" required /></div>
+            <div class="field"><label for="last_name">Nazwisko</label><input id="last_name" class="input" autocomplete="family-name" required /></div>
+          </div>
+          <div class="row cols-3" style="margin-top:8px">
+            <div class="field"><label for="email">E-mail</label><input id="email" class="input" type="email" autocomplete="email" required /></div>
+            <div class="field"><label for="phone">Telefon (opcjonalnie)</label><input id="phone" class="input" type="tel" inputmode="tel" autocomplete="tel" placeholder="np. 600123456" /></div>
+            <div class="field"><label for="birth">Data urodzenia (opcjonalnie)</label><input id="birth" class="input" type="date" autocomplete="bday" /></div>
+          </div>
+        </fieldset>
+
+        <!-- Adres (wysyłka / dokumenty) -->
+        <fieldset class="box reveal" style="--d:120ms">
+          <legend><strong>2. Adres</strong></legend>
+          <div class="row cols-3">
+            <div class="field"><label for="street">Ulica i nr</label><input id="street" class="input" autocomplete="address-line1" required /></div>
+            <div class="field"><label for="zip">Kod pocztowy</label><input id="zip" class="input" inputmode="numeric" autocomplete="postal-code" placeholder="12-345" required /></div>
+            <div class="field"><label for="city">Miejscowość</label><input id="city" class="input" autocomplete="address-level2" required /></div>
+          </div>
+          <div class="row cols-2" style="margin-top:8px">
+            <div class="field"><label for="country">Kraj</label><input id="country" class="input" autocomplete="country-name" value="Polska" required /></div>
+            <div class="field"><label for="notes">Uwagi (opcjonalnie)</label><input id="notes" class="input" placeholder="np. dane do odnotowania na certyfikacie" /></div>
+          </div>
+          <p class="hint" style="margin-top:8px">Kod pocztowy w formacie <strong>12-345</strong>. Pola wymagane oznaczono pogrubieniem.</p>
+        </fieldset>
+
+        <!-- Faktura -->
+        <fieldset class="box reveal" style="--d:180ms">
+          <legend><strong>3. Faktura (opcjonalnie)</strong></legend>
+          <label class="switch"><input id="want_invoice" type="checkbox" /> <span>Chcę fakturę VAT</span></label>
+          <div id="invoice_fields" class="row cols-2" style="margin-top:10px;display:none">
+            <div class="field"><label for="company">Nazwa firmy</label><input id="company" class="input" /></div>
+            <div class="field"><label for="nip">NIP</label><input id="nip" class="input" inputmode="numeric" placeholder="bez myślników" /></div>
+            <div class="field"><label for="invoice_email">E-mail do faktury</label><input id="invoice_email" class="input" type="email" /></div>
+            <div class="field"><label for="invoice_addr">Adres firmy</label><input id="invoice_addr" class="input" placeholder="ulica, kod, miasto" /></div>
+          </div>
+        </fieldset>
+
+        <!-- Zgody -->
+        <fieldset class="box reveal" style="--d:240ms">
+          <legend><strong>4. Zgody</strong></legend>
+          <label class="switch"><input id="accept_terms" type="checkbox" required /> <span>Akceptuję <a class="nav-link" href="./regulamin.html" target="_blank" rel="noopener">Regulamin</a> i <a class="nav-link" href="./polityka.html" target="_blank" rel="noopener">Politykę prywatności</a>.</span></label>
+        </fieldset>
+
+        <!-- Akcje -->
+        <div class="reveal" style="--d:300ms;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+          <a class="btn btn--ghost" href="./index.html#sklep">Anuluj</a>
+          <button id="save" type="submit" class="btn">Zapisz dane</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="container section" style="padding-bottom:28px">
+    <hr>
+    <div style="display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap">
+      <div>&copy; <span id="year"></span> Centrum Szkoleniowe</div>
+      <nav style="display:flex; gap:10px">
+        <a class="nav-link" href="./polityka.html">Polityka prywatności</a>
+        <a class="nav-link" href="./regulamin.html">Regulamin</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    /* ====== Utils / API ====== */
+    const qs  = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+    const toast = (msg) => { const el = qs('#toast'); el.textContent = msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2600); };
+    const handle = async (res)=>{ let j=null; try{ j=await res.json(); }catch{} if(!res.ok||(j&&j.ok===false)){ throw new Error(j?.error?.message||`HTTP ${res.status}`);} return j??{ok:true,data:null}; };
+    const api = { get:(u)=>fetch(u,{credentials:'same-origin'}).then(handle), post:(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(b||{})}).then(handle) };
+
+    /* ====== Header mobile & year ====== */
+    const nav=qs('#nav'); qs('#menu')?.addEventListener('click',()=>nav?.classList.toggle('open'));
+    qs('#year').textContent = new Date().getFullYear();
+
+    /* ====== Reveal + stagger ====== */
+    const io = new IntersectionObserver((ents)=>{ ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }); },{ threshold:.15 });
+    qsa('.reveal').forEach(el=> io.observe(el));
+
+    /* ====== Pre-fill z parametrów i localStorage ====== */
+    const p = new URLSearchParams(location.search);
+    const orderId   = p.get('order')   || localStorage.getItem('lastOrderId')   || '';
+    const attemptId = p.get('attempt') || localStorage.getItem('lastAttemptId') || '';
+
+    // Podpowiedz e-mail z poprzednich kroków (jeśli backend zwróci)
+    try{
+      if(orderId){
+        const { data } = await api.get(`/api/orders/${orderId}`);
+        if(data?.email) qs('#email').value = data.email;
+        if(data?.recipient){
+          // wypełnij jeśli istnieją (edycja)
+          const r = data.recipient;
+          ['first_name','last_name','email','phone','birth','street','zip','city','country','notes']
+            .forEach(id => { if(r[id]) qs('#'+id).value = r[id]; });
+          if(r.want_invoice){ qs('#want_invoice').checked = true; qs('#invoice_fields').style.display='grid';
+            ['company','nip','invoice_email','invoice_addr'].forEach(id=> r[id] && (qs('#'+id).value = r[id]));
+          }
+        }
+      }
+    }catch {}
+
+    /* ====== Logika UI — faktura on/off ====== */
+    qs('#want_invoice').addEventListener('change', (e)=>{
+      qs('#invoice_fields').style.display = e.target.checked ? 'grid' : 'none';
+    });
+
+    /* ====== Walidacje lekkie ====== */
+    // Kod pocztowy: 12-345 (autowstawianie myślnika)
+    const zip = qs('#zip');
+    zip.addEventListener('input', ()=>{
+      let v = zip.value.replace(/[^\d]/g,'');
+      if(v.length > 5) v = v.slice(0,5);
+      if(v.length >= 3) v = v.slice(0,2) + '-' + v.slice(2);
+      zip.value = v;
+    });
+    // Telefon – tylko cyfry
+    qs('#phone').addEventListener('input', (e)=> e.target.value = e.target.value.replace(/[^\d]/g,''));
+    // Imię/Nazwisko – trim i kapitalizacja pierwszej litery (z polskimi znakami)
+    function capitalizeWords(s){ return (s||'').trim().replace(/\s+/g,' ').split(' ').map(w=> w.charAt(0).toLocaleUpperCase('pl-PL') + w.slice(1)).join(' '); }
+    qs('#first_name').addEventListener('blur', e=> e.target.value = capitalizeWords(e.target.value));
+    qs('#last_name').addEventListener('blur',  e=> e.target.value = capitalizeWords(e.target.value));
+
+    function validate(){
+      const need = ['first_name','last_name','email','street','zip','city','country'];
+      for(const id of need){ const el = qs('#'+id); if(!el.value.trim()){ el.focus(); toast('Uzupełnij wymagane pola.'); return false; } }
+      if(!/^\d{2}-\d{3}$/.test(qs('#zip').value)){ qs('#zip').focus(); toast('Podaj kod w formacie 12-345.'); return false; }
+      if(qs('#want_invoice').checked && qs('#nip').value && !/^\d{10}$/.test(qs('#nip').value.replace(/\D/g,''))){ qs('#nip').focus(); toast('NIP powinien mieć 10 cyfr.'); return false; }
+      return true;
+    }
+
+    /* ====== Zapis ====== */
+    qs('#form').addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      if(!orderId){ toast('Brakuje identyfikatora zamówienia. Wejdź z linku po płatności.'); return; }
+      if(!validate()) return;
+
+      const payload = {
+        first_name: qs('#first_name').value.trim(),
+        last_name : qs('#last_name').value.trim(),
+        email     : qs('#email').value.trim(),
+        phone     : qs('#phone').value.trim(),
+        birth     : qs('#birth').value || null,
+        street    : qs('#street').value.trim(),
+        zip       : qs('#zip').value.trim(),
+        city      : qs('#city').value.trim(),
+        country   : qs('#country').value.trim(),
+        notes     : qs('#notes').value.trim(),
+        want_invoice: qs('#want_invoice').checked,
+        company   : qs('#want_invoice').checked ? qs('#company').value.trim() : null,
+        nip       : qs('#want_invoice').checked ? qs('#nip').value.replace(/\D/g,'') : null,
+        invoice_email: qs('#want_invoice').checked ? qs('#invoice_email').value.trim() : null,
+        invoice_addr : qs('#want_invoice').checked ? qs('#invoice_addr').value.trim() : null,
+        attemptId
+      };
+
+      const btn = qs('#save'); const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Zapisywanie…';
+      try{
+        const r = await api.post(`/api/orders/${orderId}/recipient`, payload);
+        toast('Zapisano dane ✅');
+        // zachowaj, by kolejne ekrany znały kontekst
+        localStorage.setItem('lastOrderId', String(orderId));
+        if(attemptId) localStorage.setItem('lastAttemptId', String(attemptId));
+
+        // przejście do weryfikacji / certyfikatu
+        const next = `/verify-certyfikat.html?order=${encodeURIComponent(orderId)}`;
+        setTimeout(()=> location.href = next, 600);
+      }catch(e){
+        console.error(e);
+        toast(e.message || 'Nie udało się zapisać danych');
+      }finally{
+        btn.disabled = false; btn.textContent = orig;
+      }
+    });
+  </script>
+</body>
+</html>

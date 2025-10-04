@@ -1,138 +1,149 @@
-// src/routes/payments.js
 import { Router } from 'express';
+import { q } from '../db.js';
 import { z } from 'zod';
-import { query, tx } from '../db.js';
-import { requireAuth } from '../middleware/auth.js';
+import {
+  PAYMENTS_PROVIDER, PAYU_CLIENT_ID, PAYU_CLIENT_SECRET, PAYU_POS_ID, PAYU_SANDBOX,
+  PUBLIC_BASE_URL, FRONTEND_BASE_URL, MAGIC_LINK_TTL_HOURS
+} from '../config.js';
+import { randomBytes } from 'crypto';
+import fetch from 'node-fetch';
+import { sendMagicLinkEmail } from '../util/email.js';
 
-const router = Router();
-router.use(requireAuth);
+export const paymentsRouter = Router();
 
-/**
- * POST /payments/create
- * body: { course_id: number }
- * Tworzy zamówienie (pending). Dla kursów za 0 zł -> od razu płatne i enrollment.
- */
-router.post('/create', async (req, res, next) => {
+const payuUrls = PAYU_SANDBOX ? {
+  oauth: 'https://secure.snd.payu.com/pl/standard/user/oauth/authorize',
+  orders: 'https://secure.snd.payu.com/api/v2_1/orders'
+} : {
+  oauth: 'https://secure.payu.com/pl/standard/user/oauth/authorize',
+  orders: 'https://secure.payu.com/api/v2_1/orders'
+};
+
+async function payuToken() {
+  const res = await fetch(payuUrls.oauth, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: PAYU_CLIENT_ID,
+      client_secret: PAYU_CLIENT_SECRET
+    })
+  });
+  if (!res.ok) throw new Error(`PayU OAuth failed: ${res.status}`);
+  return res.json();
+}
+
+// POST /api/payments/create  { orderId }
+paymentsRouter.post('/create', async (req, res, next) => {
   try {
-    const bs = z.object({ course_id: z.coerce.number().int().positive() }).safeParse(req.body || {});
-    if (!bs.success) return res.status(400).json({ error: 'INVALID_INPUT' });
+    const schema = z.object({ orderId: z.string().uuid() });
+    const { orderId } = schema.parse(req.body);
 
-    const uid = req.user?.uid || req.user?.id;
-    const courseId = bs.data.course_id;
+    const { rows: ords } = await q(
+      `select o.id, o.amount_cents, o.currency, o.email, c.title
+       from orders o join courses c on c.id=o.course_id where o.id=$1`,
+      [orderId]
+    );
+    if (!ords.length) return res.status(404).json({ ok: false, error: { message: 'Order not found' } });
+    const ord = ords[0];
 
-    const c = await query('SELECT id, price_cents, title FROM courses WHERE id=$1', [courseId]);
-    if (c.rowCount === 0) return res.status(404).json({ error: 'COURSE_NOT_FOUND' });
+    // FAKE provider — natychmiast potwierdzamy i generujemy magic link
+    if (PAYMENTS_PROVIDER === 'fake') {
+      await q('update orders set status=$1 where id=$2', ['paid', orderId]);
 
-    const price = c.rows[0].price_cents ?? 0;
+      // NIE BLOKUJ ODPOWIEDZI: wygeneruj link i wyślij e-mail „best-effort”
+      generateAndSendMagicLink(orderId)
+        .catch((err) => console.error('[PAYMENTS] generateAndSendMagicLink error:', err?.message || err));
 
-    const order = await tx(async (client) => {
-      // jeśli istnieje paid enrollment, nie rób nowego zamówienia
-      const enr = await client.query(
-        'SELECT 1 FROM enrollments WHERE user_id=$1 AND course_id=$2',
-        [uid, courseId]
-      );
-      if (enr.rowCount > 0) {
-        // zwróć pseudo-order paid
-        return {
-          id: 0,
-          status: 'paid',
-          course_id: courseId,
-          amount_cents: 0,
-        };
-      }
+      return res.json({ ok: true, data: { redirectUrl: `${FRONTEND_BASE_URL}/thank-you.html?order=${orderId}` } });
+    }
 
-      // utwórz zamówienie
-      const r = await client.query(
-        `INSERT INTO orders (user_id, course_id, amount_cents, status, provider)
-         VALUES ($1,$2,$3,$4,$5)
-         RETURNING id, user_id, course_id, amount_cents, status`,
-        [uid, courseId, price, 'pending', 'dev']
-      );
-      const ord = r.rows[0];
+    // PAYU – zbuduj zamówienie i zwróć redirectUri
+    const oauth = await payuToken();
+    const body = {
+      notifyUrl: `${PUBLIC_BASE_URL}/api/payments/webhook`,
+      continueUrl: `${FRONTEND_BASE_URL}/thank-you.html?order=${orderId}`,
+      customerIp: '127.0.0.1',
+      merchantPosId: PAYU_POS_ID,
+      description: `Dostęp do kursu`,
+      currencyCode: ord.currency,
+      totalAmount: String(ord.amount_cents),
+      buyer: { email: ord.email },
+      products: [{
+        name: ord.title,
+        unitPrice: String(ord.amount_cents),
+        quantity: '1'
+      }],
+      extOrderId: orderId
+    };
 
-      // jeżeli kurs jest darmowy, od razu „opłać” i dodaj enrollment
-      if (price === 0) {
-        await client.query(
-          `UPDATE orders SET status='paid', paid_at=now() WHERE id=$1`,
-          [ord.id]
-        );
-        await client.query(
-          `INSERT INTO enrollments (user_id, course_id)
-           VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-          [uid, courseId]
-        );
-        ord.status = 'paid';
-      }
-
-      return ord;
+    const r = await fetch(payuUrls.orders, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${oauth.access_token}`
+      },
+      body: JSON.stringify(body)
     });
 
-    return res.json({
-      ok: true,
-      order: { id: order.id, course_id: courseId, amount_cents: order.amount_cents, status: order.status },
-    });
-  } catch (e) {
-    next(e);
-  }
+    const data = await r.json();
+    if (!r.ok) {
+      console.error('[PayU Error]', data);
+      return res.status(400).json({ ok: false, error: { message: 'PayU create order failed' } });
+    }
+
+    await q('update orders set payu_order_id=$1 where id=$2', [data.orderId, orderId]);
+    res.json({ ok: true, data: { redirectUrl: data.redirectUri } });
+  } catch (e) { next(e); }
 });
 
-/**
- * GET /payments/order/:orderId
- * Zwraca stan zamówienia użytkownika (autoryzacja właściciela).
- */
-router.get('/order/:orderId', async (req, res) => {
-  const ps = z.object({ orderId: z.coerce.number().int().positive() }).safeParse(req.params);
-  if (!ps.success) return res.status(400).json({ error: 'INVALID_INPUT' });
+// Webhook PayU
+paymentsRouter.post('/webhook', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const order = body?.order;
+    if (!order?.orderId || !order?.status) return res.status(400).json({ ok: false });
 
-  const uid = req.user?.uid || req.user?.id;
-  const id = ps.data.orderId;
+    const { rows } = await q('select id, status from orders where payu_order_id=$1', [order.orderId]);
+    if (!rows.length) return res.status(200).json({ ok: true }); // ignoruj nieznane
 
-  const r = await query(
-    `SELECT id, user_id, course_id, amount_cents, status, paid_at
-     FROM orders WHERE id=$1`,
-    [id]
+    const local = rows[0];
+    if (order.status === 'COMPLETED' && local.status !== 'paid') {
+      await q('update orders set status=$1 where id=$2', ['paid', local.id]);
+      generateAndSendMagicLink(local.id)
+        .catch((err) => console.error('[PAYMENTS] generateAndSendMagicLink error:', err?.message || err));
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+async function generateAndSendMagicLink(orderId) {
+  const token = randomBytes(32).toString('hex');
+  const { rows: ords } = await q(
+    `select o.id, o.email, c.title
+     from orders o join courses c on c.id=o.course_id where o.id=$1`,
+    [orderId]
   );
-  if (r.rowCount === 0) return res.status(404).json({ error: 'ORDER_NOT_FOUND' });
-  const o = r.rows[0];
-  if (o.user_id !== (uid | 0)) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (!ords.length) return;
 
-  res.json({ order: { id: o.id, course_id: o.course_id, amount_cents: o.amount_cents, status: o.status, paid_at: o.paid_at } });
-});
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_TTL_HOURS * 3600 * 1000);
+  await q(
+    'insert into magic_links (order_id, token, expires_at) values ($1,$2,$3)',
+    [orderId, token, expiresAt.toISOString()]
+  );
 
-/**
- * POST /payments/:orderId/simulate-success
- * Oznacza płatność jako „paid” i dodaje enrollment.
- */
-router.post('/:orderId/simulate-success', async (req, res, next) => {
+  const linkUrl = `${PUBLIC_BASE_URL}/access/${token}`;
+  // Nie przerywaj flow jeśli e-mail padnie – tylko zaloguj
   try {
-    const ps = z.object({ orderId: z.coerce.number().int().positive() }).safeParse(req.params);
-    if (!ps.success) return res.status(400).json({ error: 'INVALID_INPUT' });
-
-    const uid = req.user?.uid || req.user?.id;
-    const id = ps.data.orderId;
-
-    await tx(async (client) => {
-      const r = await client.query(
-        `SELECT id, user_id, course_id, status FROM orders WHERE id=$1 FOR UPDATE`,
-        [id]
-      );
-      if (r.rowCount === 0) throw Object.assign(new Error('ORDER_NOT_FOUND'), { status: 404, code: 'ORDER_NOT_FOUND' });
-      const o = r.rows[0];
-      if (o.user_id !== (uid | 0)) throw Object.assign(new Error('FORBIDDEN'), { status: 403, code: 'FORBIDDEN' });
-      if (o.status === 'paid') return;
-
-      await client.query(`UPDATE orders SET status='paid', paid_at=now() WHERE id=$1`, [id]);
-      await client.query(
-        `INSERT INTO enrollments (user_id, course_id)
-         VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-        [uid, o.course_id]
-      );
+    const r = await sendMagicLinkEmail({
+      to: ords[0].email,
+      courseTitle: ords[0].title,
+      linkUrl,
+      expiresAt: expiresAt.toLocaleString('pl-PL')
     });
-
-    res.json({ ok: true });
-  } catch (e) {
-    next(e);
+    if (!r?.ok) console.warn('[EMAIL] wysyłka pominięta/nieudana:', r?.reason || r);
+  } catch (err) {
+    console.error('[EMAIL] wyjatek wysylki:', err?.message || err);
   }
-});
-
-export default router;
+}

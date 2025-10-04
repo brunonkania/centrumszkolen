@@ -1,31 +1,265 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Quiz – Centrum Szkoleń</title>
-  <link rel="stylesheet" href="public/style.css" />
+  <meta charset="utf-8" />
+  <title>Quiz — Kurs online | Centrum Szkoleniowe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Quiz końcowy — zalicz i odbierz certyfikat PDF." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Progres paska – korzysta ze zmiennych z style.css */
+    .progress{height:12px;border:1px solid var(--border);border-radius:999px;background:#fff;overflow:hidden}
+    .progress__bar{height:100%;width:0;background:linear-gradient(135deg,var(--violet),var(--pink));transition:width .35s ease}
+    .choices{display:grid;gap:10px;margin-top:10px}
+    .choice{
+      padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#fff;cursor:pointer;
+      transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .choice:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(16,22,38,.08)}
+    .choice[aria-checked="true"]{border-color: var(--ring); box-shadow: 0 0 0 4px var(--ring)}
+    .question-stem{font-weight:800;margin:0}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--muted);font-weight:700}
+    .result-ok{color:#065f46}
+    .result-bad{color:#991b1b}
+  </style>
 </head>
 <body>
-  <header class="site-header">
-    <a href="index.html" class="logo">Centrum Szkoleń</a>
-    <nav>
-      <a href="kursy.html">Sklep</a>
-      <a href="panel.html">Moje kursy</a>
-      <a href="#" class="btn-secondary" data-logout>Wyloguj</a>
-    </nav>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header__inner">
+      <div class="brand">
+        <span class="brand__dot"></span> <span>Centrum Szkoleniowe</span>
+      </div>
+      <button id="menu" class="hamburger" aria-label="Menu" title="Menu">≡</button>
+      <nav id="nav" class="nav">
+        <a class="nav-link" href="./index.html#sklep">Sklep</a>
+        <a class="nav-link" href="./index.html#faq">FAQ</a>
+      </nav>
+    </div>
   </header>
 
-  <main class="container">
-    <h1 id="h1">Quiz</h1>
-    <form id="form" class="quiz-form">Ładowanie…</form>
-    <div class="mt-20">
-      <a class="btn-secondary" id="back">← Wróć do kursu</a>
-    </div>
+  <main>
+    <!-- HERO / Intro -->
+    <section class="banner reveal center" aria-label="Quiz">
+      <h1 id="hero-title">Quiz końcowy 🧠</h1>
+      <p id="hero-desc" class="muted">Zaliczenie uprawnia do otrzymania certyfikatu PDF. Powodzenia!</p>
+      <div class="banner__cta">
+        <a class="btn btn--ghost" href="./index.html#sklep">← Wróć do sklepu</a>
+        <button id="btn-start" class="btn">Rozpocznij quiz</button>
+      </div>
+    </section>
+
+    <!-- Karta z pytaniem -->
+    <section class="container section reveal" id="quiz-card" hidden>
+      <div class="section__head" style="align-items:center">
+        <div>
+          <h2 class="section__title" id="q-title">Pytanie</h2>
+          <p class="section__desc"><span id="q-count">0/0</span> • <span class="pill">Próg: <span id="pass-threshold">—</span>%</span></p>
+        </div>
+        <div style="flex:1"></div>
+        <div style="min-width:220px">
+          <div class="progress" aria-hidden="true"><div id="bar" class="progress__bar"></div></div>
+        </div>
+      </div>
+
+      <article class="card reveal" style="--d:60ms">
+        <div class="card__body">
+          <p class="question-stem" id="stem">Ładuję…</p>
+          <div id="choices" class="choices" role="listbox" aria-label="Odpowiedzi"></div>
+          <div class="card__row" style="margin-top:12px">
+            <button id="btn-prev" class="btn btn--ghost" type="button">Wstecz</button>
+            <div style="flex:1"></div>
+            <button id="btn-next" class="btn" type="button">Dalej</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Wynik -->
+    <section class="container section reveal center" id="result-card" hidden>
+      <h2 class="section__title">Wynik</h2>
+      <p class="section__desc">Twój wynik: <strong id="score">—</strong>% • <span id="passinfo" class="result-ok">—</span></p>
+      <div class="banner__cta" style="margin-top:10px">
+        <a class="btn btn--ghost" href="./index.html#sklep">Przeglądaj kursy</a>
+        <a id="to-data" class="btn" href="#">Przejdź do danych do certyfikatu</a>
+      </div>
+    </section>
   </main>
 
-  <footer class="site-footer"><p>&copy; 2025 Centrum Szkoleń</p></footer>
+  <footer class="container section" style="padding-bottom:28px">
+    <hr>
+    <div style="display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap">
+      <div>&copy; <span id="year"></span> Centrum Szkoleniowe</div>
+      <nav style="display:flex; gap:10px">
+        <a class="nav-link" href="./polityka.html">Polityka prywatności</a>
+        <a class="nav-link" href="./regulamin.html">Regulamin</a>
+      </nav>
+    </div>
+  </footer>
 
-  <script type="module" src="./js/quiz.js?v=1"></script>
-  <script type="module" src="./js/boot.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    /* ====== Utils / API ====== */
+    const qs  = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+    const toast = (msg) => { const el = qs('#toast'); el.textContent = msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2600); };
+    const handle = async (res)=>{ let j=null; try{ j=await res.json(); }catch{} if(!res.ok||(j&&j.ok===false)){ throw new Error(j?.error?.message||`HTTP ${res.status}`);} return j??{ok:true,data:null}; };
+    const api = { get:(u)=>fetch(u,{credentials:'same-origin'}).then(handle), post:(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(b||{})}).then(handle) };
+
+    /* ====== Header mobile & year ====== */
+    const nav=qs('#nav'); qs('#menu')?.addEventListener('click',()=>nav?.classList.toggle('open'));
+    qs('#year').textContent = new Date().getFullYear();
+
+    /* ====== Reveal ====== */
+    const io = new IntersectionObserver((ents)=>{ ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); },{ threshold:.15 });
+    qsa('.reveal').forEach(el=> io.observe(el));
+
+    /* ====== State ====== */
+    const p = new URLSearchParams(location.search);
+    const slug = p.get('slug');
+    if(!slug){ qs('#hero-title').textContent='Quiz — brak kursu'; qs('#hero-desc').textContent='Brakuje parametru ?slug='; qs('#btn-start').disabled=true; }
+
+    let QUESTIONS = [];   // [{id, text, answers:[{id,text}]}]
+    let PASS = 70;        // próg %
+    let attemptId = null;
+    let index = 0;
+    const answers = new Map(); // questionId -> answerId
+
+    const bar = qs('#bar');
+    const stem = qs('#stem');
+    const choicesBox = qs('#choices');
+    const countEl = qs('#q-count');
+    const passEl  = qs('#pass-threshold');
+    const titleEl = qs('#q-title');
+
+    function updateProgress(){
+      const total = QUESTIONS.length || 1;
+      const pct = Math.round((index)/total*100);
+      bar.style.width = pct + '%';
+      countEl.textContent = `${Math.min(index+1,total)}/${total}`;
+    }
+
+    function renderQuestion(){
+      const q = QUESTIONS[index];
+      if(!q){ return; }
+      titleEl.textContent = `Pytanie ${index+1}`;
+      stem.textContent = q.text || q.question || 'Treść pytania';
+      choicesBox.innerHTML = (q.answers || q.choices || []).map(a=>{
+        const id = a.id ?? a.answerId ?? a.value;
+        const txt= a.text ?? a.label;
+        const checked = answers.get(q.id) === id;
+        return `<button class="choice" role="option" data-a="${id}" aria-checked="${checked?'true':'false'}">${txt}</button>`;
+      }).join('');
+      qsa('.choice', choicesBox).forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          answers.set(q.id, btn.getAttribute('data-a'));
+          qsa('.choice', choicesBox).forEach(b=> b.setAttribute('aria-checked','false'));
+          btn.setAttribute('aria-checked','true');
+        });
+      });
+      updateProgress();
+    }
+
+    async function loadCourseMeta(){
+      try{
+        const { data } = await api.get(`/api/catalog/${slug}`);
+        qs('#hero-title').textContent = `Quiz: ${data.title} 🧠`;
+        qs('#hero-desc').textContent  = data.description || 'Zaliczenie uprawnia do otrzymania certyfikatu.';
+      }catch{}
+    }
+
+    async function startQuiz(){
+      qs('#btn-start').disabled = true;
+      try{
+        // najpierw spróbuj GET (u Ciebie tak działało), w razie czego POST
+        let j;
+        try { j = await api.get(`/api/quiz/${slug}/start`); }
+        catch { j = await api.post(`/api/quiz/${slug}/start`, {}); }
+
+        const d = j.data || {};
+        attemptId = d.attemptId || d.id || d.attempt || null;
+        PASS = d.passScore ?? d.pass ?? PASS;
+        passEl.textContent = PASS;
+
+        // różne możliwe kształty odpowiedzi z backendu
+        if(Array.isArray(d.questions)){ QUESTIONS = d.questions.map((q,i)=>({ id: q.id ?? q.questionId ?? `q${i}`, text: q.text ?? q.question ?? '', answers: q.answers ?? q.choices ?? [] })); }
+        else if(Array.isArray(d.items)){ QUESTIONS = d.items.map((q,i)=>({ id: q.id ?? `q${i}`, text: q.text ?? '', answers: q.answers ?? [] })); }
+        else if(d.question){ // backend zwraca jedno pytanie – zbuduj tablicę fallback (wizualnie)
+          QUESTIONS = [d.question];
+        }
+
+        if(!QUESTIONS.length) throw new Error('Brak pytań w quizie');
+
+        // UI
+        qs('#quiz-card').hidden = false;
+        renderQuestion();
+        toast('Powodzenia!');
+      }catch(e){
+        console.error(e);
+        toast(e.message || 'Nie udało się rozpocząć quizu.');
+      }finally{
+        qs('#btn-start').disabled = false;
+      }
+    }
+
+    async function submitQuiz(){
+      // zbuduj wektor odpowiedzi
+      const payloadAnswers = QUESTIONS.map(q=>({ questionId: q.id, answerId: answers.get(q.id) ?? null }));
+      try{
+        let r;
+        try { r = await api.post(`/api/quiz/${slug}/submit`, { attemptId, answers: payloadAnswers }); }
+        catch { r = await api.post(`/api/quiz/${slug}/finish`, { attemptId, answers: payloadAnswers }); }
+        const data = r.data || {};
+        const score = Math.round(data.score ?? data.percentage ?? 0);
+        const passed = !!(data.passed ?? (score >= PASS));
+
+        qs('#score').textContent = score;
+        const pi = qs('#passinfo');
+        pi.textContent = passed ? 'ZALICZONO ✅' : 'NIEZALICZONO ❌';
+        pi.className = passed ? 'result-ok' : 'result-bad';
+
+        // zapisz info do localStorage (może się przydać przy danych do certyfikatu)
+        if(data.orderId) localStorage.setItem('lastOrderId', String(data.orderId));
+        if(attemptId) localStorage.setItem('lastAttemptId', String(attemptId));
+        if(slug) localStorage.setItem('lastCourseSlug', slug);
+
+        // link do danych
+        const orderId = data.orderId || new URLSearchParams(location.search).get('order') || localStorage.getItem('lastOrderId') || '';
+        const toData = qs('#to-data');
+        const query = new URLSearchParams({ attempt: attemptId || '', order: orderId || '' }).toString();
+        toData.href = `./dane.html?${query}`;
+
+        // UI
+        qs('#quiz-card').hidden = true;
+        qs('#result-card').hidden = false;
+        toast(passed ? 'Gratulacje! 🎉' : 'Spróbuj ponownie – dasz radę!');
+      }catch(e){
+        console.error(e);
+        toast(e.message || 'Nie udało się przesłać wyników.');
+      }
+    }
+
+    // handlers
+    qs('#btn-start').addEventListener('click', startQuiz);
+    qs('#btn-next').addEventListener('click', ()=>{
+      if(!QUESTIONS.length) return;
+      if(answers.get(QUESTIONS[index].id)==null){ toast('Wybierz odpowiedź.'); return; }
+      if(index < QUESTIONS.length - 1){ index++; renderQuestion(); }
+      else{ submitQuiz(); }
+      // Przycisk zmienia label
+      qs('#btn-next').textContent = (index < QUESTIONS.length - 1) ? 'Dalej' : 'Zakończ';
+      qs('#btn-prev').disabled = (index === 0);
+    });
+    qs('#btn-prev').addEventListener('click', ()=>{
+      if(index>0){ index--; renderQuestion(); }
+      qs('#btn-next').textContent = (index < QUESTIONS.length - 1) ? 'Dalej' : 'Zakończ';
+      qs('#btn-prev').disabled = (index === 0);
+    });
+
+    // start: meta i domyślny stan
+    loadCourseMeta();
+    qs('#btn-prev').disabled = true;
+  </script>
 </body>
 </html>

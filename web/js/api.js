@@ -1,48 +1,39 @@
-// web/js/api.js
-// Jeden, spójny punkt dostępu do backendu przez Nginx proxy.
-// Dzięki temu nie potrzebujemy CORS w prod/dev – wszystko idzie jako same-origin.
-const API_URL = '/api';
+// Fetch helper z sensowną obsługą błędów (pokazuj message z backendu)
+export async function handle(res) {
+  let json = null;
+  try { json = await res.json(); } catch { /* ignore */ }
 
-async function getCsrf() {
-  const r = await fetch(`${API_URL}/csrf`, { credentials: 'include' });
-  return r.ok ? (await r.json()).csrf : null;
-}
-
-// surowy ping bez CSRF (np. /health)
-export async function _raw(path, init) {
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    ...(init || {}),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const ct = res.headers.get('content-type') || '';
-  return ct.includes('application/json') ? res.json() : res.text();
-}
-
-/**
- * apiFetch – wrapper z CSRF i cookies.
- * - JSON in/out
- * - automatycznie dołącza token z /api/csrf w nagłówku x-csrf-token dla metod modyfikujących
- */
-export async function apiFetch(path, options = {}) {
-  const method = (options.method || 'GET').toUpperCase();
-  const needsCsrf = /^(POST|PUT|PATCH|DELETE)$/i.test(method);
-  const csrf = needsCsrf ? (await getCsrf()) : null;
-
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(csrf ? { 'x-csrf-token': csrf } : {}),
-      ...(options.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try { const err = await res.json(); msg = err.message || err.error || msg; } catch {}
-    throw new Error(msg);
+  if (!res.ok || (json && json.ok === false)) {
+    const msg = json?.error?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.payload = json;
+    throw err;
   }
-  const ct = res.headers.get('content-type') || '';
-  return ct.includes('application/json') ? res.json() : null;
+  return json ?? { ok: true, data: null };
 }
+
+export const api = {
+  async get(url) {
+    const r = await fetch(url, { credentials: 'same-origin' });
+    return handle(r);
+  },
+  async post(url, body) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body ?? {})
+    });
+    return handle(r);
+  },
+  async put(url, body) {
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body ?? {})
+    });
+    return handle(r);
+  }
+};

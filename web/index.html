@@ -1,155 +1,313 @@
 <!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8">
-  <title>ProLevel — Centrum szkoleniowe (bez konta)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ProLevel: kursy online z certyfikatem i dostępem przez link po zakupie. Bez logowania.">
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8" />
+  <title>Centrum Szkoleniowe — Kursy online z certyfikatem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Kurs online, szybka płatność, dostęp z e-maila i certyfikat po zaliczeniu egzaminu." />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Header -->
   <header class="header">
-    <div class="container header-inner">
-      <a class="brand" href="../index.html"><div class="brand__logo"></div><div class="brand__name">ProLevel</div></a>
-      <nav class="nav">
-        <a class="btn btn--ghost" href="#sklep">Sklep</a>
-        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
-      </nav>
-      <button id="hamburger" class="hamburger">☰</button>
-    </div>
-    <div id="mobile" class="mobile">
-      <div class="container nav-col">
-        <a class="btn btn--ghost" href="#sklep">Sklep</a>
-        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
+    <div class="container header__inner">
+      <div class="brand">
+        <span class="brand__dot"></span> <span>Centrum Szkoleniowe</span>
       </div>
+      <button id="menu" class="hamburger" aria-label="Menu" title="Menu">≡</button>
+      <nav id="nav" class="nav">
+        <a class="nav-link" href="#o-kursie">Opis</a>
+        <a class="nav-link" href="#sklep">Sklep</a>
+        <a class="nav-link" href="#faq">FAQ</a>
+        <a class="nav-link" href="#kontakt">Kontakt</a>
+      </nav>
     </div>
   </header>
 
-  <section class="hero">
-    <div class="container hero-grid">
-      <div>
-        <div class="pill kicker">Centrum szkoleniowe online</div>
-        <h1>Ucz się wygodnie. Dostęp z maila, bez konta.</h1>
-        <p>Kupujesz kurs, a my wysyłamy **link dostępu** do materiałów i egzaminu. Po zdaniu – certyfikat PDF z numerem weryfikacyjnym.</p>
-        <div class="hero-cta">
-          <a class="btn" href="#sklep">Przeglądaj kursy</a>
-          <a class="btn btn--ghost" href="/certyfikaty.html">Zweryfikuj certyfikat</a>
-        </div>
+  <main>
+    <!-- BANER — WYŚRODKOWANY (box i treść) -->
+    <section class="banner reveal" aria-label="Baner">
+      <h1>Ucz się wygodnie — zalicz quiz — odbierz certyfikat ✨</h1>
+      <p>Prosto i profesjonalnie: kupujesz kurs, dostajesz dostęp z e-maila, przerabiasz materiał i zdajesz krótki egzamin.</p>
+      <div class="banner__cta">
+        <a class="btn" href="#sklep">Przejdź do sklepu</a>
+        <a class="btn btn--ghost" href="./polityka.html">Polityka prywatności</a>
       </div>
-      <div class="hero-card">
-        <h3 class="hero-card__title">Jak to działa?</h3>
-        <div class="hero-card__row"><span>Wybierz kurs</span><span class="badge">Sklep</span></div>
-        <div class="hero-card__row"><span>Zapłać</span><span class="badge">Bez konta</span></div>
-        <div class="hero-card__row"><span>Odbierz link w e-mailu</span><div class="loader"></div></div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="section">
-    <div class="container">
-      <div class="features">
-        <div class="feature"><h3>Bez logowania</h3><p>Link magiczny na maila – od razu dostęp do materiałów.</p></div>
-        <div class="feature"><h3>Certyfikat PDF</h3><p>Unikalny numer + weryfikacja online.</p></div>
-        <div class="feature"><h3>Quiz końcowy</h3><p>Sprawdź się i pobierz certyfikat po zaliczeniu.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SKLEP -->
-  <section id="sklep" class="section">
-    <div class="container">
+    <!-- KRÓTKI OPIS -->
+    <section id="o-kursie" class="container section reveal" aria-label="Opis">
       <div class="section__head">
-        <h2 class="section__title">Sklep — wszystkie kursy</h2>
-        <p class="section__desc">Wybierz kurs i zacznij jeszcze dziś</p>
-      </div>
-
-      <div class="hero-card" style="margin-bottom:18px;">
-        <div class="grid-2">
-          <input id="q" class="input" type="search" placeholder="Szukaj kursu… (tytuł, opis)">
-          <div style="display:flex; gap:10px; justify-content:flex-end;">
-            <button id="btnReset" class="btn btn--ghost">Wyczyść</button>
-          </div>
+        <div>
+          <h2 class="section__title">Kurs online z certyfikatem</h2>
+          <p class="section__desc">Dostęp z e-maila • Quiz online • PDF z numerem weryfikacyjnym</p>
         </div>
       </div>
 
-      <div id="list" class="cards" aria-live="polite"></div>
-    </div>
-  </section>
-
-  <footer class="footer">
-    <div class="container footer-inner">
-      <div>© <span id="year"></span> ProLevel</div>
-      <div style="display:flex; gap:16px;">
-        <a href="/regulamin.html">Regulamin</a>
-        <a href="/polityka.html">Polityka prywatności</a>
-        <a href="/kontakt.html">Kontakt</a>
+      <div class="brief">
+        <div class="brief__row" data-stagger>
+          <article class="brief__item reveal">
+            <h3>✉️ Dostęp z e-maila</h3>
+            <p>Po płatności wysyłamy bezpieczny link. Nie musisz zakładać konta.</p>
+          </article>
+          <article class="brief__item reveal">
+            <h3>🧠 Quiz online</h3>
+            <p>Próg zaliczenia i wynik od razu po zakończeniu. Działa także na telefonie.</p>
+          </article>
+          <article class="brief__item reveal">
+            <h3>🏆 Certyfikat PDF</h3>
+            <p>Dokument z numerem weryfikacyjnym — pewność dla pracodawcy.</p>
+          </article>
+        </div>
       </div>
+    </section>
+
+    <!-- STATYSTYKI -->
+    <section class="container band reveal" aria-label="Statystyki">
+      <div class="stats" id="stats" data-stagger>
+        <div class="stat reveal">
+          <h3 data-count="2500">0</h3>
+          <p>Uczestników</p>
+        </div>
+        <div class="stat reveal">
+          <h3 data-count="98">0</h3>
+          <p>% zdawalności</p>
+        </div>
+        <div class="stat reveal">
+          <h3 data-count="24">0</h3>
+          <p>godz. do certyfikatu</p>
+        </div>
+        <div class="stat reveal">
+          <h3 data-count="4.9">0</h3>
+          <p>średnia ocen</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKLEP -->
+    <section id="sklep" class="container section reveal" aria-label="Sklep z kursami">
+      <div class="section__head">
+        <div>
+          <h2 class="section__title">Sklep z kursami</h2>
+          <p class="section__desc">Wybierz kurs i zacznij jeszcze dziś</p>
+        </div>
+        <div class="filters">
+          <label class="field">
+            <span>Szukaj</span>
+            <input id="q" class="input" placeholder="np. Instruktor pływania" />
+          </label>
+          <button id="clear" class="btn btn--ghost" type="button">Wyczyść</button>
+        </div>
+      </div>
+
+      <div id="state" class="section__desc" style="margin-top:8px"></div>
+      <div id="grid" class="grid cols-3 xl-cols-4" data-stagger></div>
+    </section>
+
+    <!-- DLACZEGO MY -->
+    <section class="container section reveal" aria-label="Dlaczego my">
+      <div class="section__head center">
+        <h2 class="section__title">Dlaczego warto u nas?</h2>
+        <p class="section__desc">Szybko, nowocześnie, profesjonalnie</p>
+      </div>
+      <div class="grid cols-3" data-stagger>
+        <article class="feature reveal"><h3>📚 Materiały premium</h3><p>Aktualne, przygotowane przez praktyków.</p></article>
+        <article class="feature reveal"><h3>📝 Egzamin online</h3><p>Prosty próg zaliczenia, wynik od razu.</p></article>
+        <article class="feature reveal"><h3>🔒 Bezpieczeństwo</h3><p>Linki magiczne i weryfikacja certyfikatów.</p></article>
+      </div>
+    </section>
+
+    <!-- KROKI -->
+    <section class="container section reveal" aria-label="Jak to działa">
+      <div class="section__head center"><h2 class="section__title">Jak to działa?</h2></div>
+      <div class="grid cols-3" data-stagger>
+        <article class="step reveal"><div class="num">1</div><strong>Wybierz kurs</strong><span class="muted">Dodaj e-mail i opłać zamówienie. 🛒</span></article>
+        <article class="step reveal"><div class="num">2</div><strong>Otwórz materiały</strong><span class="muted">Kliknij w magiczny link. ✉️</span></article>
+        <article class="step reveal"><div class="num">3</div><strong>Zdaj quiz i odbierz certyfikat</strong><span class="muted">Wypełnij dane — przygotujemy PDF. 🏆</span></article>
+      </div>
+    </section>
+
+    <!-- OPINIE -->
+    <section class="container section reveal" aria-label="Opinie klientów">
+      <div class="section__head center">
+        <h2 class="section__title">Opinie uczestników</h2>
+        <p class="section__desc">Realne doświadczenia absolwentów</p>
+      </div>
+      <div class="testimonials" data-stagger>
+        <article class="testi reveal"><div class="head"><div class="avatar">A</div><div><strong>Anna</strong><br><span class="stars">★★★★★</span></div></div><blockquote>Materiały świetnie poukładane. Certyfikat tego samego dnia.</blockquote><cite>Instruktor Pływania</cite></article>
+        <article class="testi reveal"><div class="head"><div class="avatar">M</div><div><strong>Michał</strong><br><span class="stars">★★★★★</span></div></div><blockquote>Szybka płatność i dostęp z maila. Na telefonie działa super.</blockquote><cite>Instruktor Pływania</cite></article>
+        <article class="testi reveal"><div class="head"><div class="avatar">K</div><div><strong>Kasia</strong><br><span class="stars">★★★★★</span></div></div><blockquote>Profesjonalnie i bez problemów. Polecam! 🙂</blockquote><cite>Instruktor Pływania</cite></article>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="container section reveal" aria-label="FAQ">
+      <div class="section__head center"><h2 class="section__title">Najczęstsze pytania</h2></div>
+      <div class="faq" data-stagger>
+        <details class="reveal"><summary>Jak szybko dostanę dostęp?</summary><p>Natychmiast po płatności — wyślemy magiczny link na e-mail. 🚀</p></details>
+        <details class="reveal"><summary>Czy działa na telefonie?</summary><p>Tak, interfejs jest w pełni responsywny. 📱</p></details>
+        <details class="reveal"><summary>Czy wystawiacie fakturę?</summary><p>Tak — po zaliczeniu quizu uzupełnisz dane, w tym do faktury. 📄</p></details>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="container section" style="padding-bottom:28px">
+    <hr>
+    <div style="display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap">
+      <div>&copy; <span id="year"></span> Centrum Szkoleniowe</div>
+      <nav style="display:flex; gap:10px">
+        <a class="nav-link" href="./polityka.html">Polityka prywatności</a>
+        <a class="nav-link" href="./regulamin.html">Regulamin</a>
+      </nav>
     </div>
   </footer>
 
-  <div id="toast" class="toast"></div>
-  <script src="/js/app.js"></script>
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
+  <!-- MODAL CHECKOUT -->
+  <dialog id="checkout">
+    <form method="dialog" class="modal" id="co-form">
+      <h3 id="co-title" style="margin:0">Zamówienie</h3>
+      <p id="co-desc" class="section__desc" style="margin:0">Podaj e-mail, na który wyślemy link do materiałów.</p>
+      <label class="field"><span>E-mail</span><input id="co-email" class="input" type="email" placeholder="np. jan.kowalski@example.com" required /></label>
+      <div class="actions"><button type="button" id="co-cancel" class="btn btn--ghost">Anuluj</button><button type="submit" class="btn" id="co-pay">Zapłać i odbierz link</button></div>
+      <p class="section__desc" style="margin:0">Płatność testowa (FAKE/PayU). Po sukcesie przejdziemy do „Dziękujemy”.</p>
+    </form>
+  </dialog>
 
-    const input = document.getElementById('q');
-    const btnReset = document.getElementById('btnReset');
-    const list = document.getElementById('list');
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    let items = [];
-    let filtered = [];
+  <script type="module">
+    /* ====== Helpers ====== */
+    const qs  = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+    const money = (c=0, curr='PLN') => new Intl.NumberFormat('pl-PL',{style:'currency', currency:curr}).format((c||0)/100);
 
-    function render(data){
-      list.innerHTML = '';
-      if(data.length === 0){
-        list.innerHTML = '<p class="card__desc">Nie znaleziono kursów dla podanego filtra.</p>';
-        return;
+    const toast = (msg) => { const el = qs('#toast'); el.textContent = msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2600); };
+
+    async function handle(res){ let json=null; try{ json=await res.json(); }catch{} if(!res.ok || (json && json.ok===false)){ const msg = json?.error?.message || `HTTP ${res.status}`; throw new Error(msg); } return json ?? { ok:true, data:null }; }
+    const api = {
+      get : (u)=> fetch(u, { credentials:'same-origin' }).then(handle),
+      post: (u,b)=> fetch(u, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(b||{}) }).then(handle),
+    };
+
+    /* ====== Header mobile ====== */
+    const nav = qs('#nav'); const menuBtn = qs('#menu'); menuBtn?.addEventListener('click', ()=> nav?.classList.toggle('open'));
+
+    /* ====== Footer year ====== */ qs('#year').textContent = new Date().getFullYear();
+
+    /* ====== Reveal on scroll ====== */
+    const io = new IntersectionObserver((ents)=>{ ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); },{ threshold:.15 });
+    qsa('.reveal').forEach(el=> io.observe(el));
+
+    /* Stagger: nadaje opóźnienia dzieciom kontenerów z data-stagger */
+    function setupStagger(root=document){
+      root.querySelectorAll('[data-stagger]').forEach(box=>{
+        Array.from(box.children).forEach((child, i)=>{
+          child.style.setProperty('--d', `${Math.min(i*80, 400)}ms`);
+        });
+      });
+    }
+    setupStagger();
+
+    /* ====== Stats counter ====== */
+    function animateCount(el, to){
+      const isFloat = String(to).includes('.');
+      const target=parseFloat(to);
+      const dur=1000+Math.random()*600;
+      const t0=performance.now();
+      function tick(now){
+        const p=Math.min(1,(now-t0)/dur);
+        const val=target*p;
+        el.textContent=isFloat?val.toFixed(1):Math.round(val);
+        if(p<1) requestAnimationFrame(tick);
       }
-      for(const it of data){
-        const el = document.createElement('article');
-        el.className = 'card';
-        el.innerHTML = `
-          <div class="card__media" ${it.thumbnail_url ? `style="background:url('${it.thumbnail_url}') center/cover no-repeat"` : ''}></div>
-          <div class="card__body">
-            <h3 class="card__title">${escapeHtml(it.title)}</h3>
-            <p class="card__desc">${escapeHtml(it.description || '')}</p>
-            <div class="card__meta">
-              <span class="price">${formatPrice(it.price_cents)}</span>
-              <a class="btn" href="/kurs/${encodeURIComponent(it.slug)}">Zobacz</a>
+      requestAnimationFrame(tick);
+    }
+    qsa('#stats [data-count]').forEach(h3=>{
+      const to=h3.getAttribute('data-count');
+      const obs=new IntersectionObserver((e)=>{
+        if(e[0].isIntersecting){ animateCount(h3,to); obs.disconnect(); }
+      },{threshold:.4});
+      obs.observe(h3);
+    });
+
+    /* ====== Sklep (API) ====== */
+    const grid=qs('#grid'); const stateEl=qs('#state'); const qInput=qs('#q'); const clearBtn=qs('#clear');
+    const modal=qs('#checkout'); const coTitle=qs('#co-title'); const coDesc=qs('#co-desc'); const coEmail=qs('#co-email'); const coForm=qs('#co-form'); const coCancel=qs('#co-cancel');
+
+    let ALL=[]; let ACTIVE=null;
+
+    function render(list){
+      if(!list?.length){ grid.innerHTML=''; stateEl.textContent='Brak kursów.'; return; }
+      stateEl.textContent='';
+      grid.innerHTML = list.map(c=>{
+        const cents=c.price ?? c.price_gross_cents ?? 0; const cur=c.currency || 'PLN';
+        return `
+          <article class="card reveal">
+            <div class="card__media"></div>
+            <div class="card__body">
+              <h3 class="card__title">${c.title}</h3>
+              <p class="card__desc">${c.description}</p>
+              <div class="card__row">
+                <div class="price">${money(cents,cur)}</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
+                  <a class="btn btn--ghost" href="./kurs.html?slug=${encodeURIComponent(c.slug)}">Szczegóły</a>
+                  <button class="btn" data-buy="${c.slug}" aria-label="Kup ${c.title}">Kup</button>
+                </div>
+              </div>
             </div>
-          </div>`;
-        list.appendChild(el);
-      }
+          </article>`;
+      }).join('');
+
+      /* reveal i stagger dla nowo wstawionych kart */
+      setupStagger(grid);
+      Array.from(grid.children).forEach(el => io.observe(el));
+
+      /* kup */
+      Array.from(grid.querySelectorAll('[data-buy]')).forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          try{
+            const slug=btn.getAttribute('data-buy');
+            const { data } = await api.get(`/api/catalog/${slug}`);
+            ACTIVE=data; coTitle.textContent = `Zamówienie: ${data.title}`; coDesc.textContent='Podaj e-mail, na który wyślemy link do materiałów.'; coEmail.value='';
+            if(typeof modal.showModal==='function') modal.showModal(); else modal.setAttribute('open','');
+          }catch(e){ console.error(e); toast('Nie udało się otworzyć zamówienia.'); }
+        });
+      });
     }
 
     function applyFilter(){
-      const q = (input.value || '').trim().toLowerCase();
-      filtered = !q ? items : items.filter(it =>
-        (it.title||'').toLowerCase().includes(q) ||
-        (it.description||'').toLowerCase().includes(q)
-      );
-      render(filtered);
+      const q=(qInput.value||'').toLowerCase().trim();
+      const list=!q?ALL:ALL.filter(c=> c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q));
+      render(list);
     }
 
-    function formatPrice(cents){ return typeof cents==='number' ? (cents/100).toLocaleString('pl-PL',{style:'currency',currency:'PLN'}) : '—'; }
-    function escapeHtml(s){
-      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
-    }
-
-    async function load(){
+    async function loadCatalog(){
+      stateEl.textContent='Ładuję kursy…';
       try{
-        const data = await APP.api('/catalog');
-        items = data.items || [];
-        filtered = items;
-        render(filtered);
-      }catch(e){
-        list.innerHTML = '<p class="card__desc">Nie udało się pobrać listy kursów.</p>';
-      }
+        const { data } = await api.get('/api/catalog'); const arr = Array.isArray(data) ? data : (data?.items || []);
+        ALL=arr; render(ALL);
+      }catch(e){ console.error(e); stateEl.textContent='Błąd wczytywania katalogu.'; }
     }
 
-    input.addEventListener('input', applyFilter);
-    btnReset.addEventListener('click', ()=>{ input.value=''; applyFilter(); });
-    load();
+    /* ====== Checkout ====== */
+    coCancel.addEventListener('click', ()=>{ if(typeof modal.close==='function') modal.close(); else modal.removeAttribute('open'); });
+    coForm.addEventListener('submit', async (ev)=>{
+      ev.preventDefault(); const email=coEmail.value.trim(); if(!email) return toast('Podaj e-mail.');
+      try{
+        const order = await api.post(`/api/catalog/${ACTIVE.slug}/order`, { email });
+        const pay   = await api.post('/api/payments/create', { orderId: order.data.orderId });
+        const url = pay?.data?.redirectUrl || `/thank-you.html?order=${order.data.orderId}`;
+        toast('Przekierowuję do płatności…'); location.href = url;
+      }catch(e){ console.error(e); toast(e.message || 'Nie udało się utworzyć płatności.'); }
+    });
+
+    /* ====== Filtry ====== */
+    qInput.addEventListener('input', applyFilter);
+    clearBtn.addEventListener('click', ()=>{ qInput.value=''; applyFilter(); });
+
+    /* start */
+    loadCatalog();
   </script>
 </body>
 </html>

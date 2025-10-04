@@ -2,161 +2,234 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8" />
+  <title>Panel administratora | Centrum Szkoleniowe</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin – Centrum Szkoleń</title>
+  <meta name="description" content="Prosty panel administracyjny do podglądu kursów i testowych zakupów (fake/PayU sandbox)." />
   <link rel="stylesheet" href="./style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
 </head>
 <body>
-  <main class="container">
-    <section class="hero">
-      <h1>Admin (CMS v2)</h1>
-      <p class="muted">Zaloguj się na konto admina: <code>admin@local</code> / <code>admin123</code></p>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="./index.html" aria-label="Strona główna">
+        <span class="logo-dot"></span> Centrum Szkoleniowe
+      </a>
+      <button class="hamburger" aria-label="Otwórz menu" aria-expanded="false" aria-controls="main-nav">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav" class="nav">
+        <a href="./index.html" class="nav-link">Sklep</a>
+        <a href="./kurs.html?slug=instruktor-plywania" class="nav-link">Szczegóły kursu</a>
+        <a href="./quiz.html" class="nav-link">Quiz (demo)</a>
+        <a href="./admin.html" class="nav-link active">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="site-main container">
+    <section class="hero" style="margin-bottom:16px">
+      <div class="hero-badge">Tylko do testów</div>
+      <h1>Panel administratora</h1>
+      <p class="muted">Podgląd kursów z bazy i szybkie wyklikanie zamówienia <strong>(fake/PayU)</strong> bez przeładowań.</p>
+      <div class="hero-cta">
+        <a class="btn btn-ghost" href="/api/catalog" target="_blank" rel="noopener">Otwórz /api/catalog</a>
+        <a class="btn btn-ghost" href="/health" target="_blank" rel="noopener">Otwórz /health</a>
+      </div>
     </section>
 
-    <section class="content">
-      <div class="row">
-        <label>Kurs ID <input id="courseId" type="number" value="1"></label>
-        <button id="load" class="btn">Wczytaj moduły</button>
-      </div>
-      <div id="mods"></div>
-      <hr class="divider"/>
-      <form id="editor" class="form" style="display:none;">
-        <h3>Edycja modułu</h3>
-        <label>Tytuł <input id="m_title"></label>
-        <label>Wideo URL <input id="m_video"></label>
-        <label>Treść HTML <textarea id="m_html" rows="8"></textarea></label>
-        <label><input type="checkbox" id="m_req"> Wymaga quizu</label>
-        <label>Próg zaliczenia (%) <input type="number" id="m_pass" value="70"></label>
-        <label>Limit prób <input type="number" id="m_limit" value="3"></label>
-        <label>Status
-          <select id="m_status">
-            <option value="draft">draft</option>
-            <option value="published">published</option>
-          </select>
-        </label>
-        <label>Quiz JSON <textarea id="m_quiz" rows="6" placeholder='{"questions":[{"type":"single","q":"","options":["A","B"],"correct":0}]}'></textarea></label>
-        <div class="row">
-          <button class="btn" type="submit">Zapisz</button>
+    <section class="grid" style="grid-template-columns: 280px 1fr; align-items:start;">
+      <!-- Lista kursów -->
+      <aside class="card" style="position:sticky; top:84px;">
+        <div class="body">
+          <h3 class="title">Kursy</h3>
+          <p class="desc">Kliknij kurs, aby wczytać szczegóły.</p>
+          <div id="courses-state" class="state"></div>
+          <div id="courses-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
-      </form>
+      </aside>
 
-      <h3>Kolejność modułów</h3>
-      <div id="order"></div>
-      <button id="saveOrder" class="btn">Zapisz kolejność</button>
+      <!-- Szczegóły / akcje -->
+      <section class="card">
+        <div class="body" id="details">
+          <h3 class="title">Szczegóły kursu</h3>
+          <p class="desc">Wybierz kurs z lewej strony, aby zobaczyć dane i wykonać testowy zakup.</p>
 
-      <p id="msg" class="muted"></p>
+          <div id="course-box" style="display:none; gap:8px; margin-top:8px;">
+            <div class="muted" id="course-slug"></div>
+            <h2 id="course-title" style="margin:4px 0;"></h2>
+            <p id="course-desc" class="muted"></p>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div class="price"><span id="course-price"></span></div>
+              <a class="btn btn-ghost" id="open-public" href="#" target="_blank" rel="noopener">Zobacz publicznie</a>
+            </div>
+
+            <hr style="border:none; border-top:1px solid var(--border); margin:12px 0">
+
+            <h4>Testowy zakup (guest)</h4>
+            <form id="order-form" class="field" style="max-width:420px;">
+              <label class="field">
+                <span>E-mail kupującego</span>
+                <input id="order-email" type="email" placeholder="test@example.com" required />
+              </label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary" id="btn-create-order" type="submit">Utwórz zamówienie + płatność</button>
+                <button class="btn btn-ghost" id="btn-fake-flow" type="button" title="Wymusza płatność FAKE po stronie backendu (jeśli PAYMENTS_PROVIDER=fake)">Szybki FAKE flow</button>
+              </div>
+            </form>
+
+            <div id="order-result" class="quiz-result" style="margin-top:12px; display:none;">
+              <div class="result-card" id="order-card">
+                <h3 style="margin-top:0">Wynik operacji</h3>
+                <div id="order-output" class="muted"></div>
+              </div>
+            </div>
+
+            <div class="tiny muted" style="margin-top:8px">
+              Po udanej płatności backend tworzy magic link i wysyła go e-mailem (jeśli masz skonfigurowany SMTP). <br>
+              Brak SMTP? Odczytaj token: <code>SELECT token FROM magic_links ORDER BY created_at DESC LIMIT 1;</code>
+            </div>
+          </div>
+        </div>
+      </section>
     </section>
   </main>
 
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>&copy; <span id="year"></span> Centrum Szkoleniowe</div>
+      <div class="footer-links">
+        <a href="#" aria-disabled="true">Polityka prywatności</a>
+        <a href="#" aria-disabled="true">Regulamin</a>
+        <a href="#" aria-disabled="true">Cookies</a>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/api.js"></script>
   <script type="module">
     import { api } from './js/api.js';
-    import { requireAuthOrRedirect } from './js/auth.js';
-    await requireAuthOrRedirect();
+    import { qs, qsa, on, money, toast, setupHeader } from './js/app.js';
 
-    tinymce.init({ selector: '#m_html', menubar:false, height:300 });
+    setupHeader();
+    document.getElementById('year').textContent = new Date().getFullYear();
 
-    const courseIdEl = document.getElementById('courseId');
-    const modsEl = document.getElementById('mods');
-    const msg = document.getElementById('msg');
-    const form = document.getElementById('editor');
-    const m_title = document.getElementById('m_title');
-    const m_video = document.getElementById('m_video');
-    const m_html = document.getElementById('m_html');
-    const m_req = document.getElementById('m_req');
-    const m_pass = document.getElementById('m_pass');
-    const m_limit = document.getElementById('m_limit');
-    const m_status = document.getElementById('m_status');
-    const m_quiz = document.getElementById('m_quiz');
-    const orderEl = document.getElementById('order');
-    let current;
-    let order = [];
+    const stateEl = qs('#courses-state');
+    const listEl = qs('#courses-list');
+    const boxEl = qs('#course-box');
+    const titleEl = qs('#course-title');
+    const descEl = qs('#course-desc');
+    const priceEl = qs('#course-price');
+    const slugEl = qs('#course-slug');
+    const openPublic = qs('#open-public');
+    const orderForm = qs('#order-form');
+    const orderEmail = qs('#order-email');
+    const orderResult = qs('#order-result');
+    const orderOutput = qs('#order-output');
 
-    async function load() {
-      msg.textContent = '';
-      const cid = Number(courseIdEl.value);
+    let current = null; // { slug, title, description, price, currency }
+
+    async function loadCourses() {
+      stateEl.textContent = 'Ładowanie kursów…';
       try {
-        const list = await api('/admin/modules/' + cid);
-        order = list.map(m => m.id);
-        modsEl.innerHTML = list.map(m => \`<button class="btn" data-id="\${m.id}">\${m.id}. \${m.title} (\${m.status})</button>\`).join(' ');
-        orderEl.innerHTML = list.map(m => \`
-          <div class="row" data-id="\${m.id}">
-            <span style="width:40px;display:inline-block;">\${m.id}</span>
-            <strong style="flex:1">\${m.title}</strong>
-            <button class="btn" data-move="-1">↑</button>
-            <button class="btn" data-move="1">↓</button>
-          </div>\`).join('');
-        orderEl.querySelectorAll('button[data-move]').forEach(btn => {
-          btn.addEventListener('click', (e)=>{
-            const delta = Number(e.currentTarget.getAttribute('data-move'));
-            const id = Number(e.currentTarget.parentElement.getAttribute('data-id'));
-            const idx = order.indexOf(id);
-            const j = idx + delta;
-            if (j >= 0 && j < order.length) {
-              [order[idx], order[j]] = [order[j], order[idx]];
-              renderOrder();
-            }
-          });
+        const { data } = await api.get('/api/catalog');
+        if (!data.length) {
+          stateEl.textContent = 'Brak kursów.';
+          return;
+        }
+        listEl.innerHTML = data
+          .map(c => `<button class="btn btn-ghost" data-slug="${c.slug}" style="justify-content:flex-start">${c.title}</button>`)
+          .join('');
+        stateEl.textContent = '';
+
+        qsa('[data-slug]', listEl).forEach(btn => {
+          btn.addEventListener('click', async () => selectCourse(btn.dataset.slug));
         });
-        modsEl.querySelectorAll('button[data-id]').forEach(btn => {
-          btn.addEventListener('click', async (e)=>{
-            const id = Number(e.currentTarget.getAttribute('data-id'));
-            const data = await api(\`/admin/module/\${cid}/\${id}\`);
-            current = id;
-            m_title.value = data.title || '';
-            m_video.value = data.videoUrl || '';
-            tinymce.get('m_html').setContent(data.contentHtml || '');
-            m_req.checked = !!data.requiresQuiz;
-            m_pass.value = data.passScore || 70;
-            m_limit.value = data.attemptLimit || 3;
-            m_status.value = data.status || 'published';
-            m_quiz.value = JSON.stringify(data.quiz || {questions:[]}, null, 2);
-            form.style.display = 'grid';
-          });
-        });
-      } catch(e) {
-        msg.textContent = e.message || 'Błąd';
+
+        // auto-select pierwszego
+        await selectCourse(data[0].slug);
+      } catch (e) {
+        console.error(e);
+        stateEl.textContent = 'Błąd ładowania kursów.';
       }
     }
-    function renderOrder() {
-      const cid = Number(courseIdEl.value);
-      orderEl.querySelectorAll('.row').forEach(row => {
-        const id = Number(row.getAttribute('data-id'));
-        row.querySelector('span').textContent = (order.indexOf(id)+1);
-        orderEl.appendChild(row);
-      });
-    }
-    document.getElementById('load').addEventListener('click', load);
 
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      msg.textContent = 'Zapisywanie...';
+    async function selectCourse(slug) {
       try {
-        await api(\`/admin/module/\${Number(courseIdEl.value)}/\${current}\`, {
-          method:'POST',
-          body: {
-            title: m_title.value,
-            contentHtml: tinymce.get('m_html').getContent(),
-            videoUrl: m_video.value,
-            requiresQuiz: m_req.checked,
-            passScore: Number(m_pass.value||70),
-            attemptLimit: Number(m_limit.value||3),
-            status: m_status.value,
-            quiz: JSON.parse(m_quiz.value || '{"questions":[]}')
-          }
-        });
-        msg.textContent = 'Zapisano ✅';
-      } catch(e) {
-        msg.textContent = e.message || 'Błąd';
+        stateEl.textContent = 'Ładowanie szczegółów…';
+        const { data } = await api.get(`/api/catalog/${slug}`);
+        current = data;
+        renderCourse();
+        stateEl.textContent = '';
+      } catch (e) {
+        console.error(e);
+        toast('Nie udało się pobrać szczegółów kursu.');
+      }
+    }
+
+    function renderCourse() {
+      if (!current) return;
+      boxEl.style.display = 'grid';
+      slugEl.textContent = `Slug: ${current.slug}`;
+      titleEl.textContent = current.title;
+      descEl.textContent = current.description;
+      priceEl.textContent = money(current.price, current.currency);
+      openPublic.href = `./kurs.html?slug=${encodeURIComponent(current.slug)}`;
+      orderEmail.value = 'test@example.com';
+      orderResult.style.display = 'none';
+      orderOutput.innerHTML = '';
+    }
+
+    // klasyczny flow: utwórz order → create payment (bez redirectu)
+    async function createOrderAndPayment(email) {
+      if (!current) return toast('Najpierw wybierz kurs.');
+      try {
+        const { data: order } = await api.post(`/api/catalog/${current.slug}/order`, { email });
+        const { data: pay } = await api.post('/api/payments/create', { orderId: order.orderId });
+        return { orderId: order.orderId, redirectUrl: pay.redirectUrl || null };
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
+    }
+
+    // submit formularza
+    on('#order-form', 'submit', async (ev) => {
+      ev.preventDefault();
+      const email = orderEmail.value.trim();
+      if (!email) return toast('Podaj e-mail.');
+
+      try {
+        const res = await createOrderAndPayment(email);
+        orderResult.style.display = 'block';
+        orderOutput.innerHTML = `
+          <div>orderId: <code>${res.orderId}</code></div>
+          ${res.redirectUrl ? `<div>redirectUrl: <a href="${res.redirectUrl}" target="_blank" rel="noopener">${res.redirectUrl}</a></div>` : `<div>redirectUrl: <em>brak (fake)</em></div>`}
+          <div class="tiny muted" style="margin-top:8px">Jeśli płatność jest FAKE, backend od razu tworzy magic link i (opcjonalnie) wysyła e-mail.</div>
+        `;
+        toast('Zamówienie utworzone.');
+      } catch {
+        toast('Błąd tworzenia zamówienia lub płatności.');
       }
     });
 
-    document.getElementById('saveOrder').addEventListener('click', async ()=>{
+    // szybki FAKE (wywołuje to samo co submit – różnica tylko semantyczna)
+    on('#btn-fake-flow', 'click', async () => {
+      const email = orderEmail.value.trim() || 'test@example.com';
       try {
-        await api(\`/admin/modules/\${Number(courseIdEl.value)}/reorder\`, { method:'POST', body:{ order } });
-        msg.textContent = 'Kolejność zapisana ✅';
-      } catch(e) { msg.textContent = e.message || 'Błąd'; }
+        const res = await createOrderAndPayment(email);
+        orderResult.style.display = 'block';
+        orderOutput.innerHTML = `
+          <div>orderId: <code>${res.orderId}</code></div>
+          <div>redirectUrl: <em>${res.redirectUrl || 'FAKE – brak przekierowania'}</em></div>
+        `;
+        toast('FAKE flow OK.');
+      } catch {
+        toast('Błąd FAKE flow.');
+      }
     });
+
+    loadCourses();
   </script>
 </body>
 </html>

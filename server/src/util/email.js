@@ -1,73 +1,49 @@
 import nodemailer from 'nodemailer';
-import fs from 'fs';
-import path from 'path';
+import mustache from 'mustache';
+import { readFile } from 'fs/promises';
+import { resolve } from 'path';
+import { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_FROM } from '../config.js';
 
-const SMTP_HOST = process.env.SMTP_HOST || '';
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || 'no-reply@local';
-
-let transporter = null;
+function emailConfigured() {
+  // Wystarczy host i port – auth jest opcjonalne (Mailpit/Mailhog nie wymaga)
+  return Boolean(SMTP_HOST && SMTP_PORT);
+}
 
 function getTransporter() {
-  if (transporter) return transporter;
-
-  if (!SMTP_HOST) {
-    // DEV transport (console)
-    transporter = {
-      sendMail: async (opts) => {
-        console.log('[DEV EMAIL]', { to: opts.to, subject: opts.subject });
-        console.log('--- HTML ---\n' + (opts.html || ''));
-        console.log('--- TEXT ---\n' + (opts.text || ''));
-        return { messageId: 'dev-' + Date.now() };
-      }
-    };
-    return transporter;
-  }
-
-  transporter = nodemailer.createTransport({
+  if (!emailConfigured()) return null;
+  return nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
-    secure: SMTP_PORT === 465, // 465 = SSL
-    auth: (SMTP_USER && SMTP_PASS) ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
+    secure: SMTP_SECURE,
+    auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
   });
-
-  return transporter;
 }
 
-export async function sendEmail({ to, subject, html, text }) {
-  const t = getTransporter();
-  const info = await t.sendMail({
-    from: SMTP_FROM,
-    to,
-    subject,
-    html,
-    text
-  });
-  return info;
-}
+/**
+ * Wysyła magic link e-mailem; jeżeli SMTP nie jest skonfigurowane lub jest błąd
+ * – NIE rzuca wyjątku. Zwraca obiekt z informacją, co się stało.
+ */
+export async function sendMagicLinkEmail({ to, courseTitle, linkUrl, expiresAt }) {
+  if (!emailConfigured()) {
+    console.warn('[EMAIL] Pomijam wysyłkę – brak konfiguracji SMTP_HOST/SMTP_PORT');
+    return { ok: false, reason: 'not_configured' };
+  }
 
-export function renderTemplate(name, params = {}) {
-  const base = path.resolve(process.cwd(), 'server', 'templates');
-  const layoutPath = path.join(base, 'layout.html');
-  const bodyPath = path.join(base, `${name}.html`);
+  const transporter = getTransporter();
+  try {
+    const templatePath = resolve(process.cwd(), 'server/templates/guest_link.html');
+    const template = await readFile(templatePath, 'utf8');
+    const html = mustache.render(template, { courseTitle, linkUrl, expiresAt });
 
-  let layout = '';
-  let body = '';
-
-  try { layout = fs.readFileSync(layoutPath, 'utf8'); } catch { /* ignore */ }
-  try { body = fs.readFileSync(bodyPath, 'utf8'); } catch { /* ignore */ }
-
-  const render = (tpl) =>
-    tpl.replace(/\{\{\s*([a-zA-Z0-9_\.]+)\s*\}\}/g, (_, key) => {
-      const parts = key.split('.');
-      let v = params;
-      for (const p of parts) v = (v && v[p] !== undefined) ? v[p] : '';
-      return String(v);
+    const info = await transporter.sendMail({
+      from: SMTP_FROM,
+      to,
+      subject: `Dostęp do materiałów: ${courseTitle}`,
+      html
     });
-
-  const content = render(body);
-  if (!layout) return content;
-  return render(layout).replace('<!-- {{content}} -->', content);
+    return { ok: true, info };
+  } catch (err) {
+    console.error('[EMAIL] Błąd wysyłki:', err?.message || err);
+    return { ok: false, reason: 'send_error', error: String(err?.message || err) };
+  }
 }

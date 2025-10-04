@@ -1,15 +1,14 @@
-// src/middleware/error.js
-export function notFound(_req, res, _next) {
-  res.status(404).json({ error: 'NOT_FOUND' });
-}
-
-export function errorHandler(err, _req, res, _next) {
+// Globalny handler błędów JSON
+export function errorHandler(err, req, res, _next) {
   const status = err.status || 500;
-  const code = err.code || 'INTERNAL';
-  const msg = err.message || 'Server error';
-  if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line no-console
-    console.error('[ERR]', { status, code, msg, stack: err.stack });
-  }
-  res.status(status).json({ error: code, message: msg });
+  const payload = {
+    ok: false,
+    error: {
+      message: status === 500 ? 'Internal Server Error' : err.message,
+      code: err.code || undefined
+    }
+  };
+  // log
+  console.error('[ERR]', err.stack || err);
+  res.status(status).json(payload);
 }

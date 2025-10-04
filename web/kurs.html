@@ -1,126 +1,254 @@
 <!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8">
-  <title>Kurs — ProLevel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Szczegóły kursu ProLevel. Kup bez konta — link dostępu otrzymasz na e-mail.">
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8" />
+  <title>Kurs — szczegóły | Centrum Szkoleniowe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Szczegóły kursu, program, wymagania i szybki zakup z wysyłką linku na e-mail." />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Header -->
   <header class="header">
-    <div class="container header-inner">
-      <a class="brand" href="../index.html"><div class="brand__logo"></div><div class="brand__name">ProLevel</div></a>
-      <nav class="nav">
-        <a class="btn btn--ghost" href="/#sklep">Sklep</a>
-        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
-      </nav>
-      <button id="hamburger" class="hamburger">☰</button>
-    </div>
-    <div id="mobile" class="mobile">
-      <div class="container nav-col">
-        <a class="btn btn--ghost" href="/#sklep">Sklep</a>
-        <a class="btn btn--ghost" href="/certyfikaty.html">Weryfikacja certyfikatu</a>
+    <div class="container header__inner">
+      <div class="brand">
+        <span class="brand__dot"></span> <span>Centrum Szkoleniowe</span>
       </div>
+      <button id="menu" class="hamburger" aria-label="Menu" title="Menu">≡</button>
+      <nav id="nav" class="nav">
+        <a class="nav-link" href="./index.html#o-kursie">Opis</a>
+        <a class="nav-link" href="./index.html#sklep">Sklep</a>
+        <a class="nav-link" href="./index.html#faq">FAQ</a>
+        <a class="nav-link" href="./index.html#kontakt">Kontakt</a>
+      </nav>
     </div>
   </header>
 
-  <main class="section">
-    <div class="container">
-      <div id="cover" class="hero-card" style="margin-bottom:18px; min-height:160px;"></div>
-      <div class="grid-2">
-        <div>
-          <h1 id="title" class="section__title">Kurs</h1>
-          <p id="desc" class="section__desc"></p>
-          <hr class="sep">
-          <div id="includes">
-            <h3>Co zawiera kurs</h3>
-            <ul>
-              <li>Materiały wideo/tekst</li>
-              <li>Egzamin końcowy (online)</li>
-              <li>Certyfikat PDF po zaliczeniu</li>
-            </ul>
-          </div>
-        </div>
-        <aside class="hero-card">
-          <div class="hero-card__row"><strong>Cena</strong> <span id="price" class="price">—</span></div>
-          <div class="hero-card__row"><strong>Poziom</strong> <span class="badge">Podstawowy</span></div>
-          <hr class="sep">
-          <form id="buyForm" class="grid-2" onsubmit="return false;">
-            <input id="email" class="input" type="email" placeholder="Twój e-mail" required>
-            <button id="buy" class="btn" type="submit">Kup bez konta</button>
-          </form>
-          <p class="card__desc" style="margin-top:12px">Po płatności otrzymasz e-mail z linkiem do materiałów.</p>
-          <div id="afterBuy" class="card__desc" style="margin-top:8px;"></div>
-        </aside>
+  <main>
+    <!-- HERO kursu -->
+    <section id="hero" class="banner reveal" aria-label="Szczegóły kursu">
+      <h1 id="title">Kurs</h1>
+      <p id="desc" class="muted">Ładuję opis…</p>
+      <div class="banner__cta" id="hero-cta">
+        <a class="btn btn--ghost" href="./index.html#sklep">← Wróć do sklepu</a>
+        <button id="buy-top" class="btn">Kup teraz</button>
       </div>
-    </div>
+    </section>
+
+    <!-- META + grafika -->
+    <section class="container section reveal" aria-label="Informacje o kursie">
+      <div class="grid cols-2" data-stagger>
+        <article class="feature reveal" id="meta">
+          <h3>ℹ️ Informacje</h3>
+          <p id="meta-lines" class="muted">Wczytywanie…</p>
+          <hr>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <button id="buy-mid" class="btn">Kup — <span id="price">—</span></button>
+            <a class="btn btn--ghost" href="./index.html#sklep">Przeglądaj inne</a>
+          </div>
+        </article>
+
+        <article class="card reveal">
+          <div class="card__media" aria-hidden="true"></div>
+          <div class="card__body">
+            <h3 class="card__title">Podgląd</h3>
+            <p class="card__desc">Ilustracyjny „mock” kursu — po zakupie otrzymasz dostęp do materiałów przez bezpieczny link ✉️.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- CO OTRZYMASZ -->
+    <section class="container section reveal" aria-label="Co otrzymasz">
+      <div class="section__head">
+        <div>
+          <h2 class="section__title">Co otrzymasz w ramach kursu</h2>
+          <p class="section__desc">Praktyczne materiały + quiz online + certyfikat PDF</p>
+        </div>
+      </div>
+      <div class="grid cols-3" data-stagger>
+        <article class="step reveal"><div class="num">1</div><strong>Materiały do nauki</strong><span class="muted">Wygodny dostęp z e-maila — bez zakładania konta.</span></article>
+        <article class="step reveal"><div class="num">2</div><strong>Egzamin online</strong><span class="muted">🧠 Krótki quiz z natychmiastowym wynikiem.</span></article>
+        <article class="step reveal"><div class="num">3</div><strong>Certyfikat PDF</strong><span class="muted">🏆 Numer weryfikacyjny do sprawdzenia online.</span></article>
+      </div>
+    </section>
+
+    <!-- PROGRAM (placeholder – jeśli nie masz jeszcze modułów) -->
+    <section class="container section reveal" aria-label="Program kursu">
+      <div class="section__head">
+        <div>
+          <h2 class="section__title">Program kursu</h2>
+          <p class="section__desc">Zarys treści — moduły i zagadnienia</p>
+        </div>
+      </div>
+      <div class="faq" data-stagger id="curriculum">
+        <details class="reveal" open>
+          <summary>Wprowadzenie i cele</summary>
+          <p>Omówienie zakresu, logiki dostępu i struktury materiałów. ✔️</p>
+        </details>
+        <details class="reveal">
+          <summary>Podstawy teoretyczne</summary>
+          <p>Najważniejsze pojęcia i schematy, które poznasz przed praktyką.</p>
+        </details>
+        <details class="reveal">
+          <summary>Ćwiczenia praktyczne</summary>
+          <p>Zadania i check-listy do samodzielnego przerobienia.</p>
+        </details>
+        <details class="reveal">
+          <summary>Egzamin końcowy (quiz)</summary>
+          <p>Krótki test online. Wynik widoczny od razu po zakończeniu.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- WYMAGANIA + FAQ krótkie -->
+    <section class="container section reveal" aria-label="Wymagania i pytania">
+      <div class="grid cols-2" data-stagger>
+        <article class="feature reveal">
+          <h3>✅ Wymagania</h3>
+          <p class="muted">Wystarczy komputer lub telefon z przeglądarką i e-mail do odbioru linku.</p>
+          <ul style="margin:8px 0 0; padding-left:18px; color:var(--muted)">
+            <li>Podstawowa umiejętność obsługi internetu</li>
+            <li>Adres e-mail do dostępu ✉️</li>
+            <li>Chęć nauki i zdania quizu 🧠</li>
+          </ul>
+        </article>
+        <article class="feature reveal">
+          <h3>❓ Szybkie pytania</h3>
+          <p class="muted">Najczęstsze kwestie dotyczące zakupu i dostępu</p>
+          <div class="faq" style="margin-top:8px">
+            <details><summary>Jak szybko dostanę dostęp?</summary><p>Natychmiast po płatności wyślemy magiczny link.</p></details>
+            <details><summary>Czy działa na telefonie?</summary><p>Tak, interfejs jest responsywny. 📱</p></details>
+            <details><summary>Czy dostanę fakturę?</summary><p>Tak — uzupełnisz dane po zaliczeniu quizu.</p></details>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- CTA końcowe -->
+    <section class="container section reveal center" aria-label="Kup teraz">
+      <h2 class="section__title">Gotowy, by zacząć? 🚀</h2>
+      <p class="section__desc">Kliknij „Kup teraz”, podaj e-mail i odbierz dostęp do materiałów.</p>
+      <div style="margin-top:12px">
+        <button id="buy-bottom" class="btn">Kup teraz — <span id="price-cta">—</span></button>
+      </div>
+    </section>
   </main>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <div>© <span id="year"></span> ProLevel</div>
-      <div style="display:flex; gap:16px;">
-        <a href="/regulamin.html">Regulamin</a>
-        <a href="/polityka.html">Polityka prywatności</a>
-        <a href="/kontakt.html">Kontakt</a>
-      </div>
+  <!-- FOOTER -->
+  <footer class="container section" style="padding-bottom:28px">
+    <hr>
+    <div style="display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap">
+      <div>&copy; <span id="year"></span> Centrum Szkoleniowe</div>
+      <nav style="display:flex; gap:10px">
+        <a class="nav-link" href="./polityka.html">Polityka prywatności</a>
+        <a class="nav-link" href="./regulamin.html">Regulamin</a>
+      </nav>
     </div>
   </footer>
 
-  <div id="toast" class="toast"></div>
-  <script src="/js/app.js"></script>
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
+  <!-- MODAL CHECKOUT -->
+  <dialog id="checkout">
+    <form method="dialog" class="modal" id="co-form">
+      <h3 id="co-title" style="margin:0">Zamówienie</h3>
+      <p id="co-desc" class="section__desc" style="margin:0">Podaj e-mail, na który wyślemy link do materiałów.</p>
+      <label class="field"><span>E-mail</span><input id="co-email" class="input" type="email" placeholder="np. jan.kowalski@example.com" required /></label>
+      <div class="actions"><button type="button" id="co-cancel" class="btn btn--ghost">Anuluj</button><button type="submit" class="btn" id="co-pay">Zapłać i odbierz link</button></div>
+      <p class="section__desc" style="margin:0">Płatność testowa (FAKE/PayU). Po sukcesie przejdziemy do „Dziękujemy”.</p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    // ====== Utils
+    const qs  = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+    const money = (c=0, curr='PLN') => new Intl.NumberFormat('pl-PL',{style:'currency', currency:curr}).format((c||0)/100);
+    const toast = (msg) => { const el = qs('#toast'); el.textContent = msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2600); };
+    const handle = async (res)=>{ let j=null; try{ j=await res.json(); }catch{} if(!res.ok||(j&&j.ok===false)){ throw new Error(j?.error?.message||`HTTP ${res.status}`);} return j??{ok:true,data:null}; };
+    const api = { get:(u)=>fetch(u,{credentials:'same-origin'}).then(handle), post:(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(b||{})}).then(handle) };
+
+    // ====== Mobile nav
+    const nav = qs('#nav'); const menuBtn = qs('#menu'); menuBtn?.addEventListener('click', ()=> nav?.classList.toggle('open'));
+    qs('#year').textContent = new Date().getFullYear();
+
+    // ====== Reveal + stagger
+    const io = new IntersectionObserver((ents)=>{ ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); },{ threshold:.15 });
+    qsa('.reveal').forEach(el=> io.observe(el));
+    function setupStagger(root=document){ root.querySelectorAll('[data-stagger]').forEach(box=> Array.from(box.children).forEach((ch,i)=> ch.style.setProperty('--d', `${Math.min(i*80, 400)}ms`))); }
+    setupStagger();
+
+    // ====== Slug
     const params = new URLSearchParams(location.search);
-    const slug = params.get('slug'); // <— klucz
+    const slug = params.get('slug');
 
-    const state = { item:null };
+    // ====== Elements
+    const title = qs('#title');
+    const desc  = qs('#desc');
+    const priceEl = qs('#price'); const priceCta = qs('#price-cta');
+    const metaLines = qs('#meta-lines');
 
-    async function load(){
+    const modal=qs('#checkout'); const coTitle=qs('#co-title'); const coDesc=qs('#co-desc'); const coEmail=qs('#co-email');
+    const coForm=qs('#co-form'); const coCancel=qs('#co-cancel');
+
+    let COURSE = null;
+
+    function bindBuyButtons(){
+      ['buy-top','buy-mid','buy-bottom'].forEach(id=>{
+        const btn = qs('#'+id);
+        btn?.addEventListener('click', ()=>{
+          if(!COURSE) return;
+          coTitle.textContent = `Zamówienie: ${COURSE.title}`;
+          coDesc.textContent  = 'Podaj e-mail, na który wyślemy link do materiałów.';
+          coEmail.value = '';
+          if(typeof modal.showModal==='function') modal.showModal(); else modal.setAttribute('open','');
+        });
+      });
+    }
+
+    async function loadCourse(){
+      if(!slug){ title.textContent='Brak kursu'; desc.textContent='Nie podano identyfikatora kursu.'; qs('#hero-cta')?.remove(); return; }
       try{
-        const res = await fetch('/api/course/' + encodeURIComponent(slug));
-        if(!res.ok){ throw new Error('not-found'); }
-        const data = await res.json();
-        const item = data.item;
-        state.item = item;
-
-        document.getElementById('title').textContent = item.title;
-        document.getElementById('desc').textContent = item.description || '';
-        document.getElementById('price').textContent = formatPrice(item.price_cents);
-        const cover = document.getElementById('cover');
-        cover.style.background = item.thumbnail_url
-          ? `url('${item.thumbnail_url}') center/cover no-repeat`
-          : `var(--grad-strong)`;
+        const { data } = await api.get(`/api/catalog/${slug}`);
+        COURSE = data;
+        title.textContent = data.title + ' 🧩';
+        desc.textContent  = data.description || 'Kurs online z certyfikatem.';
+        const cents = data.price ?? data.price_gross_cents ?? 0;
+        const cur   = data.currency || 'PLN';
+        priceEl.textContent = money(cents, cur);
+        priceCta.textContent = money(cents, cur);
+        metaLines.innerHTML  = `
+          <strong>Cena:</strong> ${money(cents,cur)}<br>
+          <strong>Waluta:</strong> ${cur}<br>
+          <strong>Format:</strong> materiały + quiz online + certyfikat PDF
+        `;
+        bindBuyButtons();
       }catch(e){
-        document.getElementById('title').textContent = 'Nie znaleziono kursu';
+        console.error(e);
+        title.textContent = 'Nie znaleziono kursu';
+        desc.textContent  = 'Spróbuj wrócić do sklepu i wybrać ponownie.';
+        qs('#hero-cta')?.remove();
       }
     }
 
-    function formatPrice(cents){ return typeof cents==='number' ? (cents/100).toLocaleString('pl-PL',{style:'currency',currency:'PLN'}) : '—'; }
-
-    document.getElementById('buyForm').addEventListener('submit', async ()=>{
+    // Checkout
+    coCancel.addEventListener('click', ()=>{ if(typeof modal.close==='function') modal.close(); else modal.removeAttribute('open'); });
+    coForm.addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      if(!COURSE) return toast('Brak danych kursu.');
+      const email = coEmail.value.trim();
+      if(!email) return toast('Podaj e-mail.');
       try{
-        const email = document.getElementById('email').value.trim();
-        if(!email){ return; }
-        // DEV: wołamy bezpośrednio checkout no-auth
-        const res = await fetch('/api/guest/checkout', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, course_slug: slug })
-        });
-        if(!res.ok){ throw new Error(await res.text()); }
-        const out = await res.json();
-        APP.toast('Super! Sprawdź maila po szczegóły.');
-        document.getElementById('afterBuy').innerHTML = out.access_url
-          ? `Dla testów: <a href="${out.access_url}">otwórz materiały</a>`
-          : 'Link został wysłany na e-mail.';
-      }catch(e){
-        APP.toast('Nie udało się rozpocząć zakupu.');
-      }
+        const order = await api.post(`/api/catalog/${COURSE.slug}/order`, { email });
+        const pay   = await api.post('/api/payments/create', { orderId: order.data.orderId });
+        const url   = pay?.data?.redirectUrl || `/thank-you.html?order=${order.data.orderId}`;
+        toast('Przekierowuję do płatności…'); location.href = url;
+      }catch(e){ console.error(e); toast(e.message || 'Nie udało się utworzyć płatności.'); }
     });
 
-    load();
+    // start
+    await loadCourse();
   </script>
 </body>
 </html>

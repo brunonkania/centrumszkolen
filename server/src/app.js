@@ -1,70 +1,56 @@
-// server/src/app.js
-import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
-import cors from "cors";
-import morgan from "morgan";
-import paymentsRouter from "./routes/payments.js";
-import magicLinksRouter from "./routes/magic-links.js";
-import certificatesRouter from "./routes/certificates.js";
+import express from 'express';
+import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
+import pinoHttp from 'pino-http';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-const app = express();
+import { security } from './middleware/security.js';
+import { errorHandler } from './middleware/error.js';
+import { catalogRouter } from './routes/catalog.js';
+import { paymentsRouter } from './routes/payments.js';
+import { accessRouter } from './routes/access.js';
+import { quizRouter } from './routes/quiz.js';
+import { recipientRouter } from './routes/recipient.js';
 
-// ====== LOGGING & CORS ======
-app.use(morgan("dev"));
-app.use(cors());
-
-// ====== RAW BODY DLA PAYU WEBHOOK (gdy włączysz weryfikację podpisu) ======
-app.use("/api/payments/notify", express.raw({ type: "*/*" }));
-app.use("/api/payments/notify", (req, _res, next) => {
-  try {
-    req.rawBody = req.body?.toString?.() || "";
-    req.body = JSON.parse(req.rawBody || "{}");
-  } catch {
-    req.rawBody = req.body?.toString?.() || "";
-    req.body = {};
-  }
-  next();
-});
-
-// ====== JSON DLA POZOSTAŁYCH ENDPOINTÓW ======
-app.use(express.json());
-
-// ====== API ROUTES ======
-app.use("/api/payments", paymentsRouter);
-app.use("/api/magic-links", magicLinksRouter);
-app.use("/api/certificates", certificatesRouter);
-
-// ====== STATIC FRONTEND ======
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const webRoot = path.resolve(__dirname, "../../web");
-app.use(express.static(webRoot, { extensions: ["html"] }));
+const __dirname = dirname(__filename);
 
-// Friendly SPA-ish routes for access token
-app.get("/access/:token", (_req, res) => {
-  res.sendFile(path.join(webRoot, "materials.html"));
-});
+// Statyczny front
+const WEB_DIR = resolve(__dirname, '../../web');
 
-// Fallback 404 (frontend 404.html jeżeli masz)
-app.use((req, res) => {
-  res.status(404).sendFile(path.join(webRoot, "404.html"));
-});
+export function createApp() {
+  const app = express();
 
-export default app;
+  app.use(pinoHttp());
+  app.use(...security);
+  app.use(bodyParser.json({ limit: '1mb' }));
+  app.use(cookieParser());
 
-import { securityMiddleware } from "./middleware/security.js";
-securityMiddleware(app);
+  // Health
+  app.get('/health', (_req, res) => res.json({ ok: true }));
 
-import adminRouter from "./routes/admin.js";
-app.use("/api/admin", adminRouter);
+  // API
+  app.use('/api/catalog', catalogRouter);
+  app.use('/api/payments', paymentsRouter);
+  app.use('/api/quiz', quizRouter);
+  app.use('/api/orders', recipientRouter); // <<<< NOWE
 
-import sitemapRouter from "./routes/sitemap.js";
-app.use("/sitemap.xml", sitemapRouter);
+  // Publiczny dostęp po magic linku (SSR)
+  app.use('/access', accessRouter);
 
-import catalogRouter from "./routes/catalog.js";
-app.use("/api/catalog", catalogRouter);
-import quizRouter from "./routes/quiz.js";
-app.use("/api/quiz", quizRouter);
-import quizRouter from "./routes/quiz.js";
-app.use("/api/quiz", quizRouter);
+  // Frontend
+  app.use(express.static(WEB_DIR, { extensions: ['html'], index: 'index.html' }));
+  app.get('/', (_req, res) => res.sendFile(resolve(WEB_DIR, 'index.html')));
+
+  // 404 (front)
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    try { return res.status(404).sendFile(resolve(WEB_DIR, '404.html')); }
+    catch { return res.status(404).send('Not Found'); }
+  });
+
+  // Errors (JSON)
+  app.use(errorHandler);
+  return app;
+}
